@@ -11,7 +11,7 @@ class TestGenerator:
         self.code_analyzer = GoCodeAnalyzer()
         self.llm_client = LLMClient()
 
-    def generate_tests_for_project(self, project_path: str = None) -> List[Dict[str, Any]]:
+    def generate_tests_for_project(self, project_path: str = None, model_type: str = 'openai') -> List[Dict[str, Any]]:
         """
         为整个项目生成单元测试
         :param project_path: 项目路径，默认为配置文件中的路径
@@ -38,7 +38,7 @@ class TestGenerator:
         results = []
         for func in functions:
             try:
-                test_code = self.generate_test_for_function(func)
+                test_code = self.generate_test_for_function(func, model_type)
                 # 保存测试代码
                 test_file_path = self._get_test_file_path(func['file_path'])
                 self._save_test_file(test_file_path, test_code, func['name'])

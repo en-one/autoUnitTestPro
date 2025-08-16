@@ -11,4 +11,5 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "astroid>=3.0.0",
     "jinja2>=3.0.0",
+    "requests>=2.32.4",
 ]

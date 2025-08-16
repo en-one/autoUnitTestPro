@@ -19,7 +19,7 @@ def main():
     
     try:
         generator = TestGenerator()
-        results = generator.generate_tests_for_project(args.project_path)
+        results = generator.generate_tests_for_project(args.project_path, args.model_type)
         
         # 打印结果统计
         success_count = sum(1 for r in results if r['status'] == 'success')
