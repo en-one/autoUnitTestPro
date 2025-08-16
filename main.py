@@ -1,6 +1,6 @@
 import logging
 import argparse
-from test_generator import TestGenerator
+from test_generator import TestTemplateGenerator
 from config import settings
 
 # 配置日志
@@ -19,11 +19,11 @@ def main():
     print("开始自动生成Go单元测试...")
     
     try:
-        generator = TestGenerator()
+        generator = TestTemplateGenerator()
         if args.file_path and args.function_name:
-            results = [generator.generate_test_for_single_function(args.file_path, args.function_name)]
+            results = [generator.generate_test_template_for_single_function(args.file_path, args.function_name)]
         else:
-            results = generator.generate_tests_for_project(args.project_path)
+            results = generator.generate_test_templates_for_project(args.project_path)
         
         # 打印结果统计
         success_count = sum(1 for r in results if r['status'] == 'success')

@@ -5,18 +5,18 @@ from code_analyzer import GoCodeAnalyzer
 from llm import LLMClient
 from config import settings
 
-class TestGenerator:
+class TestTemplateGenerator:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.code_analyzer = GoCodeAnalyzer()
         # 不再初始化LLM客户端
         # self.llm_client = LLMClient()
 
-    def generate_tests_for_project(self, project_path: str = None) -> List[Dict[str, Any]]:
+    def generate_test_templates_for_project(self, project_path: str = None) -> List[Dict[str, Any]]:
         """
-        为整个项目生成单元测试
+        为整个项目生成单元测试用例模板
         :param project_path: 项目路径，默认为配置文件中的路径
-        :return: 生成的测试信息列表
+        :return: 生成的测试模板信息列表
         """
         if not project_path:
             project_path = settings.go_project_path
@@ -39,10 +39,10 @@ class TestGenerator:
         results = []
         for func in functions:
             try:
-                test_code = self.generate_test_for_function(func)
+                test_template_code = self.generate_test_template_for_function(func)
                 # 保存测试代码
                 test_file_path = self._get_test_file_path(func['file_path'])
-                self._save_test_file(test_file_path, test_code, func['name'])
+                self._save_test_file(test_file_path, test_template_code, func['name'])
                 
                 results.append({
                     'function_name': func['name'],
@@ -61,11 +61,11 @@ class TestGenerator:
         
         return results
 
-    def generate_test_for_function(self, func_info: Dict[str, Any]) -> str:
+    def generate_test_template_for_function(self, func_info: Dict[str, Any]) -> str:
         """
-        为单个函数生成测试
+        为单个函数生成测试用例模板
         :param func_info: 函数信息
-        :return: 生成的测试代码
+        :return: 生成的测试用例模板代码
         """
         function_name = func_info['name']
         file_path = func_info['file_path']
@@ -182,13 +182,13 @@ func Test{function_name}(t *testing.T) {{
         base_name = os.path.splitext(file_name)[0]
         return os.path.join(dir_name, f"{base_name}_test.go")
 
-    def generate_test_for_single_function(self, file_path: str, function_name: str) -> Dict[str, Any]:
+    def generate_test_template_for_single_function(self, file_path: str, function_name: str) -> Dict[str, Any]:
         """
-        为单个函数生成单元测试
+        为单个函数生成单元测试用例模板
         :param file_path: 包含函数的文件路径
-        :param function_name: 要生成测试的函数名
+        :param function_name: 要生成测试用例模板的函数名
         :param model_type: 模型类型
-        :return: 生成的测试信息
+        :return: 生成的测试模板信息
         """
         if not os.path.exists(file_path):
             self.logger.error(f"文件不存在: {file_path}")
@@ -220,10 +220,10 @@ func Test{function_name}(t *testing.T) {{
         
         try:
             # 生成测试代码
-            test_code = self.generate_test_for_function(target_func)
+            test_template_code = self.generate_test_template_for_function(target_func)
             # 保存测试代码
             test_file_path = self._get_test_file_path(file_path)
-            self._save_test_file(test_file_path, test_code, function_name)
+            self._save_test_file(test_file_path, test_template_code, function_name)
             
             return {
                 'function_name': function_name,
@@ -349,11 +349,11 @@ func Test{function_name}(t *testing.T) {{
 
         return merged_code
 
-    def _save_test_file(self, test_file_path: str, test_code: str, function_name: str) -> None:
+    def _save_test_file(self, test_file_path: str, test_template_code: str, function_name: str) -> None:
         """
-        保存测试文件
+        保存测试用例模板文件
         :param test_file_path: 测试文件路径
-        :param test_code: 测试代码
+        :param test_template_code: 测试用例模板代码
         :param function_name: 函数名
         """
         # 检查文件是否存在
@@ -378,7 +378,7 @@ func Test{function_name}(t *testing.T) {{
             if not has_test_main:
                 test_main_code = self._generate_test_main()
             # 使用_merge_imports方法合并测试函数代码，确保import语句不重复
-            content = self._merge_imports(content, test_code)
+            content = self._merge_imports(content, test_template_code)
             
             # 如果需要添加TestMain函数
             if test_main_code:
@@ -395,9 +395,9 @@ func Test{function_name}(t *testing.T) {{
             test_main_code = ""
             if not has_test_main:
                 test_main_code = self._generate_test_main(package_name)
-                content = self._merge_imports(test_main_code, test_code)
+                content = self._merge_imports(test_main_code, test_template_code)
             else:
-                content = test_code
+                content = test_template_code
         
         # 保存文件
         with open(test_file_path, 'w', encoding='utf-8') as f:
