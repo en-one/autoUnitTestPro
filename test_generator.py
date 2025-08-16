@@ -362,8 +362,6 @@ func Test{function_name}(t *testing.T) {{
             with open(test_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 
-            # 检查是否已有TestMain函数
-            has_test_main = 'func TestMain(' in content
             # 检查是否已有该函数的测试
             test_func_name = f"Test{function_name}"
             has_test_func = f"func {test_func_name}(" in content
@@ -372,26 +370,62 @@ func Test{function_name}(t *testing.T) {{
                 self.logger.warning(f"函数{function_name}的测试已存在于{test_file_path}")
                 return
             
-            # 如果没有TestMain函数，添加到文件开头
+            # 检查文件夹下是否已有TestMain函数
+            dir_path = os.path.dirname(test_file_path)
+            has_test_main = self._has_test_main_in_folder(dir_path)
+            
+            test_main_code = ""
             if not has_test_main:
                 test_main_code = self._generate_test_main()
-            content = self._merge_imports(content, test_main_code)
-            
             # 使用_merge_imports方法合并测试函数代码，确保import语句不重复
             content = self._merge_imports(content, test_code)
+            
+            # 如果需要添加TestMain函数
+            if test_main_code:
+                content = self._merge_imports(content, test_main_code)
         else:
             # 文件不存在，创建新文件
             # 为新文件添加package声明
             dir_path = os.path.dirname(test_file_path)
             package_name = os.path.basename(dir_path)
-            test_main_code = self._generate_test_main(package_name)
-            content = self._merge_imports(test_main_code, test_code)
+            
+            # 检查文件夹下是否已有TestMain函数
+            has_test_main = self._has_test_main_in_folder(dir_path)
+            
+            test_main_code = ""
+            if not has_test_main:
+                test_main_code = self._generate_test_main(package_name)
+                content = self._merge_imports(test_main_code, test_code)
+            else:
+                content = test_code
         
         # 保存文件
         with open(test_file_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
         self.logger.info(f"已保存测试文件到{test_file_path}")
+
+    def _has_test_main_in_folder(self, folder_path: str) -> bool:
+        """
+        检查文件夹下所有_test.go文件是否包含TestMain函数
+        :param folder_path: 文件夹路径
+        :return: 如果有任何_test.go文件包含TestMain函数，则返回True；否则返回False
+        """
+        if not os.path.exists(folder_path):
+            return False
+
+        # 遍历文件夹下所有_test.go文件
+        for file_name in os.listdir(folder_path):
+            if file_name.endswith('_test.go'):
+                file_path = os.path.join(folder_path, file_name)
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        if 'func TestMain(' in content:
+                            return True
+                except Exception as e:
+                    self.logger.error(f"读取文件{file_path}时出错: {str(e)}")
+        return False
 
     def _generate_test_main(self, package_name: str = "") -> str:
         """
