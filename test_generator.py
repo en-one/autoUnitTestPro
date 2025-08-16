@@ -70,28 +70,30 @@ class TestGenerator:
         function_name = func_info['name']
         file_path = func_info['file_path']
         
-        # 解析包名 - 确保使用services层下的文件夹名称
-        # 获取services层下的目录路径
+        # 确定包名
         dir_path = os.path.dirname(file_path)
+        dir_path_parts = dir_path.split(os.sep)
         
-        # 分割路径为组件
-        path_components = dir_path.split(os.sep)
-        
-        # 查找services组件的索引
-        services_index = -1
-        for i, component in enumerate(path_components):
-            if component == 'services':
-                services_index = i
-                break
-        
-        if services_index != -1 and services_index + 1 < len(path_components):
-            # 使用services后的下一个目录作为包名
-            package_name = path_components[services_index + 1]
+        # 确保正确处理services/org目录结构
+        package_name = 'org'  # 默认为org包
+        if 'services' in dir_path_parts:
+            # 找到services后的一个目录作为包名
+            services_index = dir_path_parts.index('services')
+            if services_index + 1 < len(dir_path_parts):
+                package_name = dir_path_parts[services_index + 1]
+            else:
+                # 如果services是最后一个组件，则使用services作为包名
+                package_name = 'services'
         else:
-            # 如果找不到services层或它是路径的最后一个组件，使用原逻辑
+            # 如果找不到services层，尝试使用路径最后一个组件
             package_name = os.path.basename(dir_path)
         
         # 构建测试模板
+        # 确保package后面是当前生成测试用例函数所在的文件夹名称
+        # 获取目标文件所在目录
+        target_dir = os.path.dirname(file_path)
+        # 获取目标目录的名称作为包名
+        package_name = os.path.basename(target_dir)
         test_template = f"""
 package {package_name}
 
@@ -254,12 +256,20 @@ func Test{function_name}(t *testing.T) {{
                 existing_package_line = line
                 break
 
-        # 移除新代码中的package声明
-        new_lines = new_code.split('\n')
-        new_code_without_package = '\n'.join([line for line in new_lines if not line.startswith('package ')])
-
-        # 不再保留或检查package声明一致，完全依赖现有代码中的package声明
+        # 保留新代码中的package声明
         new_package_line = ''
+        new_lines = new_code.split('\n')
+        for line in new_lines:
+            if line.startswith('package '):
+                new_package_line = line
+                break
+
+        # 如果现有代码中没有package声明，但新代码中有，则使用新代码中的package声明
+        if not existing_package_line and new_package_line:
+            existing_code = new_package_line + '\n\n' + existing_code
+
+        # 移除新代码中的package声明行
+        new_code_without_package = '\n'.join([line for line in new_lines if not line.startswith('package ')])
 
         # 提取现有代码中的import块
         existing_import_start = existing_code.find('import (')
