@@ -12,7 +12,6 @@ logging.basicConfig(
 def main():
     parser = argparse.ArgumentParser(description='自动生成Go单元测试')
     parser.add_argument('--project-path', type=str, help='Go项目路径')
-    parser.add_argument('--model-type', type=str, choices=['openai', 'anthropic', 'siliconflow'], default='openai', help='大模型类型')
     parser.add_argument('--file-path', type=str, help='包含要测试函数的文件路径')
     parser.add_argument('--function-name', type=str, help='要生成测试的函数名')
     args = parser.parse_args()
@@ -22,9 +21,9 @@ def main():
     try:
         generator = TestGenerator()
         if args.file_path and args.function_name:
-            results = [generator.generate_test_for_single_function(args.file_path, args.function_name, args.model_type)]
+            results = [generator.generate_test_for_single_function(args.file_path, args.function_name)]
         else:
-            results = generator.generate_tests_for_project(args.project_path, args.model_type)
+            results = generator.generate_tests_for_project(args.project_path)
         
         # 打印结果统计
         success_count = sum(1 for r in results if r['status'] == 'success')
