@@ -99,15 +99,72 @@ import (
     "context"
     "testing"
     
-    "github.com/golang/mock/gomock"
     "github.com/stretchr/testify/assert"
-    "git.shining3d.com/cloud/dental/models"
-    "git.shining3d.com/cloud/dental/unit"
     "git.shining3d.com/cloud/util/service"
     // 添加其他必要的导入
 )
 
-func Test{function_name}(t *testing.T) {{    // 表格驱动测试    type args struct {{        ctx   context.Context        input interface{{}}    }}    tests := []struct {{        name        string        args        args        expected    interface{{}}        expectError bool    }}{{        // 正例测试用例        {{            name: "success_case",            args: args{{                ctx: context.Background(),                input: &models.{function_name}Request{{                    // 根据函数参数填充                }},            }},            expected: &models.{function_name}Response{{                // 根据函数返回类型填充            }},            expectError: false,        }},        // 反例测试用例        {{            name: "fail_case",            args: args{{                ctx: context.Background(),                input: &models.{function_name}Request{{                    // 无效的输入参数                }},            }},            expected: nil,            expectError: true,        }},    }}        for _, tt := range tests {{        t.Run(tt.name, func(t *testing.T) {{            // 初始化测试环境            ctrl := gomock.NewController(t)            defer ctrl.Finish()                        // 模拟依赖服务            mockService := service.NewMockService(ctrl)            // 根据实际依赖添加模拟行为            // mockService.EXPECT().Method(...).Return(...)                        // 执行函数            result, err := {function_name}(tt.args.ctx, tt.args.input)                        // 验证结果            if !tt.expectError {{                assert.NoError(t, err)                assert.NotNil(t, result)                // 进一步验证结果内容                // assert.Equal(t, tt.expected, result)            }} else {{                assert.Error(t, err)                assert.Nil(t, result)            }}        }})    }}
+func Test{function_name}(t *testing.T) {{
+    type args struct {{
+        ctx       context.Context
+        args      *service.Args
+        reply     *service.Replies
+        wantReply *service.Replies
+    }}
+
+    tests := []struct {{
+        name    string
+        args    args
+        wantErr bool
+    }}{{
+        // 正例测试用例
+        {{
+            name: "success_case",
+            args: args{{
+                ctx: context.Background(),
+                args: &service.Args{{
+                    // 根据函数参数填充
+                }},
+                reply: &service.Replies{{}},
+                wantReply: &service.Replies{{
+                    Status: "success",
+                    Code:   200,
+                    Result: nil, // 根据期望结果填充
+                }},
+            }},
+            wantErr: false,
+        }},
+        // 反例测试用例
+        {{
+            name: "fail_case",
+            args: args{{
+                ctx: context.Background(),
+                args: &service.Args{{
+                    // 无效的输入参数
+                }},
+                reply: &service.Replies{{}},
+                wantReply: &service.Replies{{
+                    Status: "error",
+                    Code:   400,
+                    Result: nil,
+                }},
+            }},
+            wantErr: true,
+        }},
+    }}
+
+    for _, tt := range tests {{
+        t.Run(tt.name, func(t *testing.T) {{
+            err := {function_name}(tt.args.ctx, tt.args.args, tt.args.reply)
+            if (err != nil) != tt.wantErr {{
+                t.Errorf("{function_name}() error = %v, wantErr %v", err, tt.wantErr)
+            }}
+            assert.Equal(t, tt.args.wantReply.Status, tt.args.reply.Status)
+            assert.Equal(t, tt.args.wantReply.Code, tt.args.reply.Code)
+            assert.Equal(t, tt.args.wantReply.Result, tt.args.reply.Result)
+        }})
+    }}
+
 }}
 """
         
@@ -197,20 +254,12 @@ func Test{function_name}(t *testing.T) {{    // 表格驱动测试    type args 
                 existing_package_line = line
                 break
 
-        # 提取新代码中的package声明
-        new_package_line = ''
-        new_lines = new_code.split('\n')
-        for line in new_lines:
-            if line.startswith('package '):
-                new_package_line = line
-                break
-
-        # 确保package声明一致
-        if existing_package_line and new_package_line and existing_package_line != new_package_line:
-            self.logger.warning(f"package声明不一致: {existing_package_line} vs {new_package_line}，使用已存在的声明")
-
         # 移除新代码中的package声明
+        new_lines = new_code.split('\n')
         new_code_without_package = '\n'.join([line for line in new_lines if not line.startswith('package ')])
+
+        # 不再保留或检查package声明一致，完全依赖现有代码中的package声明
+        new_package_line = ''
 
         # 提取现有代码中的import块
         existing_import_start = existing_code.find('import (')
@@ -316,13 +365,16 @@ func Test{function_name}(t *testing.T) {{    // 表格驱动测试    type args 
             # 如果没有TestMain函数，添加到文件开头
             if not has_test_main:
                 test_main_code = self._generate_test_main()
-                content = self._merge_imports(content, test_main_code)
+            content = self._merge_imports(content, test_main_code)
             
             # 使用_merge_imports方法合并测试函数代码，确保import语句不重复
             content = self._merge_imports(content, test_code)
         else:
             # 文件不存在，创建新文件
-            test_main_code = self._generate_test_main()
+            # 为新文件添加package声明
+            dir_path = os.path.dirname(test_file_path)
+            package_name = os.path.basename(dir_path)
+            test_main_code = self._generate_test_main(package_name)
             content = self._merge_imports(test_main_code, test_code)
         
         # 保存文件
@@ -331,27 +383,29 @@ func Test{function_name}(t *testing.T) {{    // 表格驱动测试    type args 
         
         self.logger.info(f"已保存测试文件到{test_file_path}")
 
-    def _generate_test_main(self) -> str:
+    def _generate_test_main(self, package_name: str = "") -> str:
         """
         生成TestMain函数
+        :param package_name: 包名，如果不为空则添加package声明
         :return: TestMain函数代码
         """
-        return """import (
+        package_line = f"package {package_name}\n\n" if package_name else ""
+        return f"""{package_line}import (
     "fmt"
     "testing"
     "git.shining3d.com/cloud/dental/unit"
 )
 
-func TestMain(m *testing.M) {
+func TestMain(m *testing.M) {{
     fmt.Println("TestBegin")
     unit.InitTestConfig()
 
     p := unit.InitGlobalMonkeyPatch()
-    defer func() {
+    defer func() {{
         p.Reset()
-    }()
+    }}()
 
     m.Run()
     fmt.Println("TestEnd")
-}
+}}
 """
