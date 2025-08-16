@@ -9,8 +9,8 @@ class TestTemplateGenerator:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.code_analyzer = GoCodeAnalyzer()
-        # 不再初始化LLM客户端
-        # self.llm_client = LLMClient()
+        self.llm_client = LLMClient()
+        self.logger.info("LLM客户端初始化完成")
 
     def generate_test_templates_for_project(self, project_path: str = None) -> List[Dict[str, Any]]:
         """
@@ -173,7 +173,34 @@ func Test{function_name}(t *testing.T) {{
 }}
 """
         
-        return test_template
+        # 获取函数的完整代码
+        function_code = self.code_analyzer.get_function_code(file_path, function_name)
+        # 调用LLM补充测试参数
+        supplemented_test_template = self._supplement_test_params(function_code, function_name, test_template)
+        return supplemented_test_template
+
+    def _supplement_test_params(self, function_code: str, function_name: str, test_template: str) -> str:
+        """
+        调用LLM补充测试用例参数
+        :param function_code: 函数代码
+        :param function_name: 函数名
+        :param test_template: 测试模板
+        :return: 补充参数后的测试模板
+        """
+        try:
+            self.logger.info(f"开始调用LLM补充测试参数: 函数名={function_name}")
+            # 调用LLM生成补充参数的测试用例
+            # 使用硅基流动模型生成测试用例
+            supplemented_test = self.llm_client.generate_test(function_code, function_name, model_type="siliconflow")
+            self.logger.info(f"LLM调用成功，生成的测试代码长度: {len(supplemented_test)}")
+            # 提取生成的测试用例中的参数部分
+            # 这里需要根据实际返回格式进行解析和替换
+            # 简单实现：直接替换整个测试用例
+            return supplemented_test
+        except Exception as e:
+            self.logger.error(f"补充测试参数失败: {str(e)}")
+            # 如果失败，返回原始模板
+            return test_template
 
     def _get_test_file_path(self, source_file_path: str) -> str:
         """

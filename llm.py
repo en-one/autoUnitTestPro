@@ -117,6 +117,8 @@ class LLMClient:
         :return: 生成的文本
         """
         try:
+            self.logger.debug(f"硅基流动模型: {settings.siliconflow_model}")
+            self.logger.debug(f"硅基流动API URL: {settings.siliconflow_url}")
             payload = {
                 "model": settings.siliconflow_model,
                 "messages": [
@@ -125,10 +127,13 @@ class LLMClient:
                 ],
                 "max_tokens": 4096
             }
+            self.logger.debug(f"硅基流动请求参数: {payload}")
             response = self.siliconflow_client.post(settings.siliconflow_url, json=payload)
+            self.logger.debug(f"硅基流动响应状态码: {response.status_code}")
             response.raise_for_status()
             result = response.json()
+            self.logger.debug(f"硅基流动响应结果: {result}")
             return result["choices"][0]["message"]["content"]
         except Exception as e:
-            self.logger.error(f"硅基流动调用失败: {str(e)}")
+            self.logger.error(f"硅基流动调用失败: {str(e)}", exc_info=True)
             raise

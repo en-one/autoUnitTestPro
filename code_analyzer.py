@@ -92,6 +92,24 @@ class GoCodeAnalyzer:
                     go_files.append(os.path.join(root, file))
         return go_files
 
+    def get_function_code(self, file_path: str, function_name: str) -> str:
+        """
+        获取指定文件中指定函数的完整代码
+        :param file_path: 文件路径
+        :param function_name: 函数名
+        :return: 函数完整代码
+        """
+        try:
+            functions = self.analyze_file(file_path)
+            for func in functions:
+                if func['name'] == function_name:
+                    return func['full_code']
+            self.logger.warning(f"在文件{file_path}中未找到函数{function_name}")
+            return ''
+        except Exception as e:
+            self.logger.error(f"获取函数{function_name}代码失败: {str(e)}")
+            return ''
+
     def analyze_directory(self, directory: str) -> List[Dict[str, Any]]:
         """
         分析目录下所有Go文件
