@@ -103,6 +103,7 @@ import (
     
     "github.com/stretchr/testify/assert"
     "git.shining3d.com/cloud/util/service"
+    ucommon "git.shining3d.com/cloud/util/common"
     // 添加其他必要的导入
 )
 
@@ -125,7 +126,8 @@ func Test{function_name}(t *testing.T) {{
             args: args{{
                 ctx: context.Background(),
                 args: &service.Args{{
-                    // 根据函数参数填充
+                    Queries: ucommon.GetHttpQueriesBytes(map[string]string{{}}),
+                    Body:    ucommon.GetHttpBodyBytes(map[string]interface{{}}{{}}),
                 }},
                 reply: &service.Replies{{}},
                 wantReply: &service.Replies{{
@@ -142,11 +144,12 @@ func Test{function_name}(t *testing.T) {{
             args: args{{
                 ctx: context.Background(),
                 args: &service.Args{{
-                    // 无效的输入参数
+                    Queries: ucommon.GetHttpQueriesBytes(map[string]string{{}}),
+                    Body:    ucommon.GetHttpBodyBytes(map[string]interface{{}}{{}}),
                 }},
                 reply: &service.Replies{{}},
                 wantReply: &service.Replies{{
-                    Status: "error",
+                    Status: "fail",
                     Code:   400,
                     Result: nil,
                 }},
