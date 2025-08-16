@@ -83,6 +83,64 @@ class TestGenerator:
         base_name = os.path.splitext(file_name)[0]
         return os.path.join(dir_name, f"{base_name}_test.go")
 
+    def generate_test_for_single_function(self, file_path: str, function_name: str, model_type: str = 'openai') -> Dict[str, Any]:
+        """
+        为单个函数生成单元测试
+        :param file_path: 包含函数的文件路径
+        :param function_name: 要生成测试的函数名
+        :param model_type: 模型类型
+        :return: 生成的测试信息
+        """
+        if not os.path.exists(file_path):
+            self.logger.error(f"文件不存在: {file_path}")
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"文件不存在: {file_path}"
+            }
+        
+        # 分析指定文件
+        functions = self.code_analyzer.analyze_file(file_path)
+        
+        # 查找指定函数
+        target_func = None
+        for func in functions:
+            if func['name'] == function_name:
+                target_func = func
+                break
+        
+        if not target_func:
+            self.logger.error(f"在文件{file_path}中未找到函数{function_name}")
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"未找到函数{function_name}"
+            }
+        
+        try:
+            # 生成测试代码
+            test_code = self.generate_test_for_function(target_func, model_type)
+            # 保存测试代码
+            test_file_path = self._get_test_file_path(file_path)
+            self._save_test_file(test_file_path, test_code, function_name)
+            
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'test_file_path': test_file_path,
+                'status': 'success'
+            }
+        except Exception as e:
+            self.logger.error(f"为函数{function_name}生成测试失败: {str(e)}")
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'status': 'failed',
+                'error': str(e)
+            }
+
     def _save_test_file(self, test_file_path: str, test_code: str, function_name: str) -> None:
         """
         保存测试文件
