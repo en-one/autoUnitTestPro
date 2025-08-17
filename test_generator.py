@@ -179,6 +179,80 @@ class TestTemplateGenerator:
         base_name = os.path.splitext(file_name)[0]
         return os.path.join(dir_name, f"{base_name}_test.go")
 
+    def generate_test_templates_for_file(self, file_path: str, use_llm: bool = True) -> List[Dict[str, Any]]:
+        """
+        为单个文件中的所有函数生成单元测试用例模板
+        :param file_path: 包含函数的文件路径
+        :param use_llm: 是否使用LLM补充测试用例参数，默认为True
+        :return: 生成的测试模板信息列表
+        """
+        # 检查文件是否存在
+        if not os.path.exists(file_path):
+            self.logger.error(f"文件不存在: {file_path}")
+            return [{
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"文件不存在: {file_path}"
+            }]
+        
+        # 检查文件是否在工作目录内
+        current_dir = os.getcwd()
+        if not os.path.abspath(file_path).startswith(os.path.abspath(current_dir)):
+            self.logger.error(f"没有权限访问工作目录外的文件: {file_path}")
+            return [{
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"没有权限访问工作目录外的文件: {file_path}。请将文件复制到工作目录内后重试，或使用--project-path参数指定工作目录内的项目"
+            }]
+        
+        # 分析指定文件
+        try:
+            functions = self.code_analyzer.analyze_file(file_path)
+        except Exception as e:
+            self.logger.error(f"分析文件{file_path}失败: {str(e)}")
+            return [{
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"分析文件失败: {str(e)}"
+            }]
+        
+        if not functions:
+            self.logger.warning(f"文件{file_path}中未找到函数")
+            return [{
+                'file_path': file_path,
+                'status': 'failed',
+                'error': "未找到函数"
+            }]
+        
+        # 为每个函数生成测试
+        results = []
+        for func in functions:
+            try:
+                # 生成测试代码
+                test_template_code = self.generate_test_template_for_function(func, use_llm)
+                
+                # 保存测试代码
+                test_file_path = self._get_test_file_path(file_path)
+                self._save_test_file(test_file_path, test_template_code, func['name'])
+                
+                results.append({
+                    'function_name': func['name'],
+                    'file_path': file_path,
+                    'test_file_path': test_file_path,
+                    'status': 'success',
+                    'message': '测试模板生成成功，已保存到指定路径'
+                })
+            except Exception as e:
+                self.logger.error(f"为函数{func['name']}生成测试失败: {str(e)}")
+                results.append({
+                    'function_name': func['name'],
+                    'file_path': file_path,
+                    'status': 'failed',
+                    'error': str(e)
+                })
+        
+        return results
+    
     def generate_test_template_for_single_function(self, file_path: str, function_name: str, use_llm: bool = True) -> Dict[str, Any]:
         """
         为单个函数生成单元测试用例模板

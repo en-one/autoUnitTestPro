@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     siliconflow_url: str = "https://api.siliconflow.cn/v1/chat/completions"
     
     # 项目配置
-    go_project_path: str = "/path/to/your/go/project"
+    go_project_path: str = "/Users/zhangliyu/Documents/code/clouddental"
     services_dir: str = "services"
     test_template_dir: str = "templates"
     
