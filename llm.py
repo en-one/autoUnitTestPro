@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 from openai import OpenAI
 from anthropic import Anthropic
 from config import settings
+import constants
 
 class LLMClient:
     def __init__(self):
@@ -67,23 +68,10 @@ class LLMClient:
         :param function_name: 函数名
         :return: 提示字符串
         """
-        return f"""
-请为以下Go函数编写单元测试,使用表格驱动测试方式,包含至少一个正例和一个反例。
-测试框架使用标准库`testing`和`gomock`。
-
-函数代码:
-{code}
-
-函数名: {function_name}
-
-测试代码要求:
-1. 导入必要的包
-2. 包含TestMain函数(如果不存在)
-3. 为每个函数创建测试函数，使用表格驱动测试
-4. 包含正例和反例测试
-5. 模拟依赖项
-6. 断言结果正确性
-"""
+        return constants.LLM_SUPPPLY_ARGS_PROMPT.format(
+            code=code,
+            function_name=function_name
+        )
 
     def _call_openai(self, prompt: str) -> str:
         """

@@ -20,7 +20,6 @@ func TestMain(m *testing.M) {{
 
 # 测试函数模板常量
 TEST_FUNCTION_TEMPLATE = """package {package_name}
-
 import (
     "context"
     "testing"
@@ -114,3 +113,23 @@ func Test{function_name}(t *testing.T) {{
     }}
 
 }}"""
+
+
+LLM_SUPPPLY_ARGS_PROMPT = """
+    我们现在已经完成了模版的生成，下面我们要创建函数调用大模型去补充测试用例。
+    首先我们需要学会如何补充异常用例的参数，因为异常用例会比较容易创建
+    
+    函数代码:
+    {code}
+
+    函数名: {function_name}
+
+    测试代码要求:
+    1. 我们要了解被测试函数的逻辑,以及函数的参数和返回值,以及函数的业务逻辑
+    2. 根据 被测试函数是使用了args.Body 还是 args.Queries 去判断我们需要补充哪些参数到测试用例中
+    3. 首先根据services层中判断是否缺失哪些参数会返回错误信息，或者哪些参数不对会返回错误信息，构造失败用例
+    4. 可根据返回的结果修改对应的测试用例中的wantReply.Code
+    
+    当添加完测试用例后，你可以通过cd命令到测试用例的当前目录下执行
+    go test -run 测试用例函数名 -v 查看执行情况
+    """
