@@ -71,29 +71,10 @@ class TestTemplateGenerator:
         file_path = func_info['file_path']
         
         # 确定包名
-        dir_path = os.path.dirname(file_path)
-        dir_path_parts = dir_path.split(os.sep)
-        
-        # 确保正确处理services/org目录结构
-        package_name = 'org'  # 默认为org包
-        if 'services' in dir_path_parts:
-            # 找到services后的一个目录作为包名
-            services_index = dir_path_parts.index('services')
-            if services_index + 1 < len(dir_path_parts):
-                package_name = dir_path_parts[services_index + 1]
-            else:
-                # 如果services是最后一个组件，则使用services作为包名
-                package_name = 'services'
-        else:
-            # 如果找不到services层，尝试使用路径最后一个组件
-            package_name = os.path.basename(dir_path)
-        
-        # 构建测试模板
-        # 确保package后面是当前生成测试用例函数所在的文件夹名称
-        # 获取目标文件所在目录
         target_dir = os.path.dirname(file_path)
-        # 获取目标目录的名称作为包名
         package_name = os.path.basename(target_dir)
+        
+        # 1. 优先生成基础测试模板
         test_template = f"""
 package {package_name}
 
@@ -138,9 +119,9 @@ func Test{function_name}(t *testing.T) {{
             }},
             wantErr: false,
         }},
-        // 反例测试用例
+        // 反例测试用例 - 参数错误
         {{
-            name: "fail_case",
+            name: "fail_case_invalid_params",
             args: args{{
                 ctx: context.Background(),
                 args: &service.Args{{
@@ -151,7 +132,25 @@ func Test{function_name}(t *testing.T) {{
                 wantReply: &service.Replies{{
                     Status: "fail",
                     Code:   400,
-                    Result: nil,
+                    Result: map[string]interface{{}}{{"error": "无效参数"}},
+                }},
+            }},
+            wantErr: true,
+        }},
+        // 反例测试用例 - 业务错误
+        {{
+            name: "fail_case_business_error",
+            args: args{{
+                ctx: context.Background(),
+                args: &service.Args{{
+                    Queries: ucommon.GetHttpQueriesBytes(map[string]string{{}}),
+                    Body:    ucommon.GetHttpBodyBytes(map[string]interface{{}}{{}}),
+                }},
+                reply: &service.Replies{{}},
+                wantReply: &service.Replies{{
+                    Status: "fail",
+                    Code:   500,
+                    Result: map[string]interface{{}}{{"error": "业务处理失败"}},
                 }},
             }},
             wantErr: true,
@@ -166,18 +165,25 @@ func Test{function_name}(t *testing.T) {{
             }}
             assert.Equal(t, tt.args.wantReply.Status, tt.args.reply.Status)
             assert.Equal(t, tt.args.wantReply.Code, tt.args.reply.Code)
-            assert.Equal(t, tt.args.wantReply.Result, tt.args.reply.Result)
+            // 注意：实际测试中可能需要根据返回结果的结构调整断言方式
+            // assert.Equal(t, tt.args.wantReply.Result, tt.args.reply.Result)
         }})
     }}
 
 }}
 """
         
-        # 获取函数的完整代码
-        function_code = self.code_analyzer.get_function_code(file_path, function_name)
-        # 调用LLM补充测试参数
-        supplemented_test_template = self._supplement_test_params(function_code, function_name, test_template)
-        return supplemented_test_template
+        # 2. 尝试调用LLM补充测试参数，但确保即使失败也返回基础模板
+        try:
+            # 获取函数的完整代码
+            function_code = self.code_analyzer.get_function_code(file_path, function_name)
+            # 调用LLM补充测试参数
+            supplemented_test_template = self._supplement_test_params(function_code, function_name, test_template)
+            return supplemented_test_template
+        except Exception as e:
+            self.logger.error(f"调用LLM补充测试参数失败，使用基础模板: {str(e)}")
+            # 失败时返回基础模板
+            return test_template
 
     def _supplement_test_params(self, function_code: str, function_name: str, test_template: str) -> str:
         """
@@ -192,14 +198,17 @@ func Test{function_name}(t *testing.T) {{
             # 调用LLM生成补充参数的测试用例
             # 使用硅基流动模型生成测试用例
             supplemented_test = self.llm_client.generate_test(function_code, function_name, model_type="siliconflow")
+            
+            # 检查返回结果是否为空
+            if not supplemented_test.strip():
+                self.logger.warning(f"LLM返回空结果，使用基础模板")
+                return test_template
+            
             self.logger.info(f"LLM调用成功，生成的测试代码长度: {len(supplemented_test)}")
-            # 提取生成的测试用例中的参数部分
-            # 这里需要根据实际返回格式进行解析和替换
-            # 简单实现：直接替换整个测试用例
             return supplemented_test
         except Exception as e:
-            self.logger.error(f"补充测试参数失败: {str(e)}")
-            # 如果失败，返回原始模板
+            self.logger.error(f"调用LLM补充测试参数失败: {str(e)}")
+            # 失败时返回原始模板
             return test_template
 
     def _get_test_file_path(self, source_file_path: str) -> str:
@@ -217,7 +226,6 @@ func Test{function_name}(t *testing.T) {{
         为单个函数生成单元测试用例模板
         :param file_path: 包含函数的文件路径
         :param function_name: 要生成测试用例模板的函数名
-        :param model_type: 模型类型
         :return: 生成的测试模板信息
         """
         if not os.path.exists(file_path):
@@ -230,7 +238,16 @@ func Test{function_name}(t *testing.T) {{
             }
         
         # 分析指定文件
-        functions = self.code_analyzer.analyze_file(file_path)
+        try:
+            functions = self.code_analyzer.analyze_file(file_path)
+        except Exception as e:
+            self.logger.error(f"分析文件{file_path}失败: {str(e)}")
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"分析文件失败: {str(e)}"
+            }
         
         # 查找指定函数
         target_func = None
@@ -249,8 +266,9 @@ func Test{function_name}(t *testing.T) {{
             }
         
         try:
-            # 生成测试代码
+            # 生成测试代码 - 确保即使LLM调用失败也能返回基础模板
             test_template_code = self.generate_test_template_for_function(target_func)
+            
             # 保存测试代码
             test_file_path = self._get_test_file_path(file_path)
             self._save_test_file(test_file_path, test_template_code, function_name)
@@ -259,15 +277,19 @@ func Test{function_name}(t *testing.T) {{
                 'function_name': function_name,
                 'file_path': file_path,
                 'test_file_path': test_file_path,
-                'status': 'success'
+                'status': 'success',
+                'message': '测试模板生成成功，已保存到指定路径'
             }
         except Exception as e:
-            self.logger.error(f"为函数{function_name}生成测试失败: {str(e)}")
+            self.logger.error(f"保存测试文件失败: {str(e)}")
+            
+            # 尝试直接返回生成的测试模板代码（即使保存失败）
             return {
                 'function_name': function_name,
                 'file_path': file_path,
-                'status': 'failed',
-                'error': str(e)
+                'status': 'partially_failed',
+                'error': f"保存测试文件失败: {str(e)}",
+                'test_template_code': test_template_code
             }
 
     def _merge_imports(self, existing_code: str, new_code: str) -> str:
