@@ -1,5 +1,6 @@
 import logging
 import requests
+import json
 from typing import Dict, Any, Optional
 from openai import OpenAI
 from anthropic import Anthropic
@@ -21,11 +22,11 @@ class LLMClient:
             self.anthropic_client = Anthropic(api_key=settings.anthropic_api_key)
         
         if settings.siliconflow_api_key:
-            self.siliconflow_client = requests.Session()
-            self.siliconflow_client.headers.update({
-                "Authorization": f"Bearer {settings.siliconflow_api_key}",
-                "Content-Type": "application/json"
-            })
+            self.siliconflow_client = OpenAI(
+                api_key=settings.siliconflow_api_key, # 从https://cloud.siliconflow.cn/account/ak获取
+                base_url="https://api.siliconflow.cn/v1"
+            )
+            
 
     def generate_test(self, code: str, function_name: str, model_type: str = "openai") -> str:
         """
@@ -134,30 +135,31 @@ class LLMClient:
                 "stream": True  # 启用流式响应
             }
             self.logger.debug(f"硅基流动请求参数: {payload}")
-            response = self.siliconflow_client.post(settings.siliconflow_url, json=payload, stream=True)
-            self.logger.debug(f"硅基流动响应状态码: {response.status_code}")
-            self.logger.debug(f"硅基流动响应头: {response.headers}")
+            # response = self.siliconflow_client.post(settings.siliconflow_url, json=payload, stream=True)
+            response = self.siliconflow_client.chat.completions.create(
+                model="Pro/deepseek-ai/DeepSeek-R1",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                stream=True,
+                temperature=0,
+                timeout=30,  # 设置30秒超时
+            )
 
             full_response = ""
             # 处理流式响应
-            for chunk in response.iter_lines():
-                if chunk:
-                    chunk_data = chunk.decode('utf-8')
-                    self.logger.debug(f"硅基流动响应块: {chunk_data}")
-                      
+            try:
+                for chunk in response:
+                    self.logger.debug(f"硅基流动响应块: {chunk}")
+                    
                     # 处理数据块
-                    if chunk_data.startswith('data: '):
-                        chunk_data = chunk_data[6:]
-                        if chunk_data == '[DONE]':
-                            break
-                        try:
-                            chunk_json = json.loads(chunk_data)
-                            if chunk_json.get('choices') and len(chunk_json['choices']) > 0:
-                                delta = chunk_json['choices'][0].get('delta', {})
-                                if 'content' in delta:
-                                    full_response += delta['content']
-                        except json.JSONDecodeError as e:
-                            self.logger.error(f"解析硅基流动响应块失败: {str(e)}")
+                    if chunk.choices and len(chunk.choices) > 0:
+                        delta = chunk.choices[0].delta
+                        if delta.content:
+                            full_response += delta.content
+            except Exception as e:
+                self.logger.error(f"硅基流动流式响应处理失败: {str(e)}", exc_info=True)
+                raise
             
             self.logger.debug(f"硅基流动完整响应: {full_response}")
             return full_response

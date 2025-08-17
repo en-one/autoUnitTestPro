@@ -5,7 +5,7 @@ from config import settings
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--project-path', type=str, help='Go项目路径')
     parser.add_argument('--file-path', type=str, help='包含要测试函数的文件路径')
     parser.add_argument('--function-name', type=str, help='要生成测试的函数名')
+    parser.add_argument('--no-llm', action='store_true', help='不使用LLM补充测试用例参数')
     args = parser.parse_args()
     
     print("开始自动生成Go单元测试...")
@@ -21,9 +22,11 @@ def main():
     try:
         generator = TestTemplateGenerator()
         if args.file_path and args.function_name:
-            results = [generator.generate_test_template_for_single_function(args.file_path, args.function_name)]
+            use_llm = not args.no_llm
+            results = [generator.generate_test_template_for_single_function(args.file_path, args.function_name, use_llm)]
         else:
-            results = generator.generate_test_templates_for_project(args.project_path)
+            use_llm = not args.no_llm
+            results = generator.generate_test_templates_for_project(args.project_path, use_llm)
         
         # 打印结果统计
         success_count = sum(1 for r in results if r['status'] == 'success')
