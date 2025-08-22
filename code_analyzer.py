@@ -10,6 +10,8 @@ class GoCodeAnalyzer:
         self.func_pattern = re.compile(r'func\s+(\w+)\s*\((.*?)\)\s*(.*?)\{', re.DOTALL)
         # Go文档注释正则表达式
         self.doc_comment_pattern = re.compile(r'(/\*\*.*?\*/|/\*.*?\*/|//.*?)(?=\s*func)', re.DOTALL|re.MULTILINE)
+        # 匹配@apitags标签的正则表达式
+        self.api_tags_pattern = re.compile(r'@apitags\s+([\w,]+)', re.MULTILINE)
 
     def analyze_file(self, file_path: str) -> List[Dict[str, Any]]:
         """
@@ -68,6 +70,9 @@ class GoCodeAnalyzer:
             if closest_pos != -1:
                 doc_comment = doc_comments[closest_pos]
             
+            # 提取@apitags标签
+            api_tags = self._extract_api_tags(doc_comment)
+            
             functions.append({
                 'name': func_name,
                 'params': params,
@@ -75,10 +80,22 @@ class GoCodeAnalyzer:
                 'body': func_body,
                 'full_code': full_func_code,
                 'file_path': file_path,
-                'doc_comment': doc_comment
+                'doc_comment': doc_comment,
+                'api_tags': api_tags
             })
         
         return functions
+
+    def _extract_api_tags(self, doc_comment: str) -> str:
+        """
+        从文档注释中提取@apitags标签的数据
+        :param doc_comment: 文档注释
+        :return: 标签字符串
+        """
+        match = self.api_tags_pattern.search(doc_comment)
+        if match:
+            return match.group(1)
+        return ''
 
     def _find_matching_brace(self, code: str, start_pos: int) -> int:
         """

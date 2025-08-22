@@ -22,6 +22,7 @@ class TestTemplateGenerator:
         """
         function_name = func_info['name']
         file_path = func_info['file_path']
+        case_tags = func_info['api_tags']
         
         # 确定包名
         target_dir = os.path.dirname(file_path)
@@ -31,7 +32,7 @@ class TestTemplateGenerator:
         test_template = constants.TEST_FUNCTION_TEMPLATE.format(
             package_name=package_name,
             function_name=function_name,
-            case_tags="dental",
+            case_tags=case_tags,
         )
         
         # 2. 如果启用LLM，则尝试调用LLM补充测试参数
