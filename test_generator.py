@@ -189,6 +189,7 @@ class TestTemplateGenerator:
                 'error': f"分析文件失败: {str(e)}"
             }
         
+        print(functions)
         # 查找指定函数
         target_func = None
         for func in functions:

@@ -8,6 +8,8 @@ class GoCodeAnalyzer:
         self.logger = logging.getLogger(__name__)
         # Go函数定义正则表达式
         self.func_pattern = re.compile(r'func\s+(\w+)\s*\((.*?)\)\s*(.*?)\{', re.DOTALL)
+        # Go文档注释正则表达式
+        self.doc_comment_pattern = re.compile(r'(/\*\*.*?\*/|/\*.*?\*/|//.*?)(?=\s*func)', re.DOTALL|re.MULTILINE)
 
     def analyze_file(self, file_path: str) -> List[Dict[str, Any]]:
         """
@@ -34,6 +36,11 @@ class GoCodeAnalyzer:
         # 使用正则表达式提取函数
         matches = self.func_pattern.finditer(code)
         
+        # 首先找到所有的文档注释
+        doc_comments = {}  # 存储位置到注释的映射
+        for doc_match in self.doc_comment_pattern.finditer(code):
+            doc_comments[doc_match.end()] = doc_match.group(1).strip()
+
         for match in matches:
             func_name = match.group(1)
             params = match.group(2).strip()
@@ -51,13 +58,24 @@ class GoCodeAnalyzer:
             # 提取完整函数代码
             full_func_code = code[match.start():end_pos+1]
             
+            # 查找函数对应的文档注释
+            doc_comment = ""
+            # 寻找距离函数定义最近的文档注释
+            closest_pos = -1
+            for pos in doc_comments.keys():
+                if pos < match.start() and pos > closest_pos:
+                    closest_pos = pos
+            if closest_pos != -1:
+                doc_comment = doc_comments[closest_pos]
+            
             functions.append({
                 'name': func_name,
                 'params': params,
                 'return_type': return_type,
                 'body': func_body,
                 'full_code': full_func_code,
-                'file_path': file_path
+                'file_path': file_path,
+                'doc_comment': doc_comment
             })
         
         return functions
