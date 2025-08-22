@@ -50,7 +50,7 @@ func Test{function_name}(t *testing.T) {{
             @unitCaseType normal
             @unitCaseTargetType api
             @unitCaseTarget {function_name}
-            @unitCaseTags TODO: Add tags here
+            @unitCaseTags {case_tags}
             @unitCaseDesc 正例测试用例 - 成功
         */
         {{
@@ -77,7 +77,7 @@ func Test{function_name}(t *testing.T) {{
             @unitCaseType abnormal
             @unitCaseTargetType api
             @unitCaseTarget {function_name}
-            @unitCaseTags TODO: Add tags here
+            @unitCaseTags {case_tags}
             @unitCaseDesc 反例测试用例 - 业务错误
         */
         {{

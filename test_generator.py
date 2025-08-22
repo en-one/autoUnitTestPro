@@ -13,100 +13,6 @@ class TestTemplateGenerator:
         self.llm_client = LLMClient()
         self.logger.info("LLM客户端初始化完成")
 
-    def supplement_test_params_for_existing_template(self, test_file_path: str, function_code: str, function_name: str) -> Dict[str, Any]:
-        """
-        为已存在的测试模板补充测试用例参数
-        :param test_file_path: 测试文件路径
-        :param function_code: 函数代码
-        :param function_name: 函数名
-        :return: 补充参数后的测试模板信息
-        """
-        if not os.path.exists(test_file_path):
-            self.logger.error(f"测试文件不存在: {test_file_path}")
-            return {
-                'function_name': function_name,
-                'test_file_path': test_file_path,
-                'status': 'failed',
-                'error': f"测试文件不存在: {test_file_path}"
-            }
-
-        try:
-            # 读取原始测试模板
-            with open(test_file_path, 'r', encoding='utf-8') as f:
-                original_template = f.read()
-
-            # 调用LLM补充测试参数
-            supplemented_test = self._supplement_test_params(function_code, function_name, original_template)
-
-            # 保存补充后的测试文件
-            with open(test_file_path, 'w', encoding='utf-8') as f:
-                f.write(supplemented_test)
-
-            return {
-                'function_name': function_name,
-                'test_file_path': test_file_path,
-                'status': 'success',
-                'message': '测试参数补充成功，已更新测试文件'
-            }
-        except Exception as e:
-            self.logger.error(f"补充测试参数失败: {str(e)}")
-            return {
-                'function_name': function_name,
-                'test_file_path': test_file_path,
-                'status': 'failed',
-                'error': f"补充测试参数失败: {str(e)}"
-            }
-
-    def generate_test_templates_for_project(self, project_path: str = None, use_llm: bool = True) -> List[Dict[str, Any]]:
-        """
-        为整个项目生成单元测试用例模板
-        :param project_path: 项目路径，默认为配置文件中的路径
-        :param use_llm: 是否使用LLM补充测试用例参数，默认为True
-        :return: 生成的测试模板信息列表
-        """
-        if not project_path:
-            project_path = settings.go_project_path
-            
-        if not os.path.exists(project_path):
-            self.logger.error(f"项目路径不存在: {project_path}")
-            raise ValueError(f"项目路径不存在: {project_path}")
-        
-        # 分析services目录下的代码
-        services_path = os.path.join(project_path, settings.services_dir)
-        if not os.path.exists(services_path):
-            self.logger.error(f"services目录不存在: {services_path}")
-            raise ValueError(f"services目录不存在: {services_path}")
-        
-        # 分析代码
-        functions = self.code_analyzer.analyze_directory(services_path)
-        self.logger.info(f"找到{len(functions)}个函数需要生成测试")
-        
-        # 为每个函数生成测试
-        results = []
-        for func in functions:
-            try:
-                test_template_code = self.generate_test_template_for_function(func, use_llm)
-                # 保存测试代码
-                test_file_path = self._get_test_file_path(func['file_path'])
-                self._save_test_file(test_file_path, test_template_code, func['name'])
-                
-                results.append({
-                    'function_name': func['name'],
-                    'file_path': func['file_path'],
-                    'test_file_path': test_file_path,
-                    'status': 'success'
-                })
-            except Exception as e:
-                self.logger.error(f"为函数{func['name']}生成测试失败: {str(e)}")
-                results.append({
-                    'function_name': func['name'],
-                    'file_path': func['file_path'],
-                    'status': 'failed',
-                    'error': str(e)
-                })
-        
-        return results
-
     def generate_test_template_for_function(self, func_info: Dict[str, Any], use_llm: bool = True) -> str:
         """
         为单个函数生成测试用例模板
@@ -124,7 +30,8 @@ class TestTemplateGenerator:
         # 1. 优先生成基础测试模板
         test_template = constants.TEST_FUNCTION_TEMPLATE.format(
             package_name=package_name,
-            function_name=function_name
+            function_name=function_name,
+            case_tags="dental",
         )
         
         # 2. 如果启用LLM，则尝试调用LLM补充测试参数
