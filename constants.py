@@ -25,7 +25,7 @@ import (
     "testing"
     
     "github.com/stretchr/testify/assert"
-    "git.shining3d.com/cloud/util/service"
+    "git.shining3d.com/cloud/mythology/pkg/service"
     ucommon "git.shining3d.com/cloud/util/common"
     // 添加其他必要的导入
 )
@@ -44,6 +44,15 @@ func Test{function_name}(t *testing.T) {{
         wantErr bool
     }}{{
         // 正例测试用例
+         /* 
+            @unitFunc Test{function_name}
+            @unitCaseName success_case
+            @unitCaseType normal
+            @unitCaseTargetType api
+            @unitCaseTarget {function_name}
+            @unitCaseTags TODO: Add tags here
+            @unitCaseDesc 正例测试用例 - 成功
+        */
         {{
             name: "success_case",
             args: args{{
@@ -62,6 +71,15 @@ func Test{function_name}(t *testing.T) {{
             wantErr: false,
         }},
         // 反例测试用例 - 参数错误
+        /* 
+            @unitFunc Test{function_name}
+            @unitCaseName fail_case_business_error
+            @unitCaseType abnormal
+            @unitCaseTargetType api
+            @unitCaseTarget {function_name}
+            @unitCaseTags TODO: Add tags here
+            @unitCaseDesc 反例测试用例 - 业务错误
+        */
         {{
             name: "fail_case_invalid_params",
             args: args{{
@@ -75,24 +93,6 @@ func Test{function_name}(t *testing.T) {{
                     Status: "fail",
                     Code:   400,
                     Result: map[string]interface{{}}{{"error": "无效参数"}},
-                }},
-            }},
-            wantErr: true,
-        }},
-        // 反例测试用例 - 业务错误
-        {{
-            name: "fail_case_business_error",
-            args: args{{
-                ctx: context.Background(),
-                args: &service.Args{{
-                    Queries: ucommon.GetHttpQueriesBytes(map[string]string{{}}),
-                    Body:    ucommon.GetHttpBodyBytes(map[string]interface{{}}{{}}),
-                }},
-                reply: &service.Replies{{}},
-                wantReply: &service.Replies{{
-                    Status: "fail",
-                    Code:   500,
-                    Result: map[string]interface{{}}{{"error": "业务处理失败"}},
                 }},
             }},
             wantErr: true,
