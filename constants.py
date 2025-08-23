@@ -41,7 +41,6 @@ func Test{function_name}(t *testing.T) {{
     tests := []struct {{
         name    string
         args    args
-        wantErr bool
     }}{{
         // 正例测试用例
          /* 
@@ -68,7 +67,6 @@ func Test{function_name}(t *testing.T) {{
                     Result: nil, // 根据期望结果填充
                 }},
             }},
-            wantErr: false,
         }},
         // 反例测试用例 - 参数错误
         /* 
@@ -91,19 +89,18 @@ func Test{function_name}(t *testing.T) {{
                 reply: &service.Replies{{}},
                 wantReply: &service.Replies{{
                     Status: "fail",
-                    Code:   400,
-                    Result: map[string]interface{{}}{{"error": "无效参数"}},
+                    Code:   200,
+                    Result: nil,// 根据期望结果填充
                 }},
             }},
-            wantErr: true,
         }},
     }}
 
     for _, tt := range tests {{
         t.Run(tt.name, func(t *testing.T) {{
             err := {function_name}(tt.args.ctx, tt.args.args, tt.args.reply)
-            if (err != nil) != tt.wantErr {{
-                t.Errorf("{function_name}() error = %v, wantErr %v", err, tt.wantErr)
+            if (err != nil) {{
+                t.Errorf("{function_name}() error = %v", err)
             }}
             assert.Equal(t, tt.args.wantReply.Status, tt.args.reply.Status)
             assert.Equal(t, tt.args.wantReply.Code, tt.args.reply.Code)
