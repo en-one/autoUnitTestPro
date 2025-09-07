@@ -1,6 +1,6 @@
 import logging
 import argparse
-from test_generator import TestTemplateGenerator
+from generator import TestTemplateGenerator
 from config import settings
 
 # 配置日志
