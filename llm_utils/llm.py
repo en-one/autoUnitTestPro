@@ -4,8 +4,8 @@ import json
 from typing import Dict, Any, Optional
 from openai import OpenAI
 from anthropic import Anthropic
-from config import settings
-import constants
+from core.config import settings
+import core.constants
 
 class LLMClient:
     def __init__(self):
@@ -69,7 +69,7 @@ class LLMClient:
         :param function_name: 函数名
         :return: 提示字符串
         """
-        return constants.LLM_SUPPPLY_ARGS_PROMPT.format(
+        return core.constants.LLM_SUPPPLY_ARGS_PROMPT.format(
             code=code,
             function_name=function_name
         )

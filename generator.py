@@ -1,10 +1,10 @@
 import os
 import logging
 from typing import List, Dict, Any
-from code_analyzer import GoCodeAnalyzer
-import constants
+from core.code_analyzer import GoCodeAnalyzer
+import core.constants
 from llm_utils.llm import LLMClient
-from config import settings
+from core.config import settings
 
 class TestTemplateGenerator:
     def __init__(self):
@@ -29,7 +29,7 @@ class TestTemplateGenerator:
         package_name = os.path.basename(target_dir)
         
         # 1. 优先生成基础测试模板
-        test_template = constants.TEST_FUNCTION_TEMPLATE.format(
+        test_template = core.constants.TEST_FUNCTION_TEMPLATE.format(
             package_name=package_name,
             function_name=function_name,
             case_tags=case_tags,

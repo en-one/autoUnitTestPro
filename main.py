@@ -1,7 +1,7 @@
 import logging
 import argparse
 from generator import TestTemplateGenerator
-from config import settings
+from core.config import settings
 
 # 配置日志
 logging.basicConfig(
