@@ -13,7 +13,7 @@ def main():
     parser = argparse.ArgumentParser(description='自动生成Go单元测试')
     parser.add_argument('--file-path', type=str, help='包含要测试函数的文件路径')
     parser.add_argument('--function-name', type=str, help='要生成测试的函数名')
-    parser.add_argument('--no-llm', action='store_true', help='不使用LLM补充测试用例参数')
+    parser.add_argument('--llm', action='store_true', help='使用LLM补充测试用例参数')
     args = parser.parse_args()
     
     print("开始自动生成Go单元测试...")
@@ -21,7 +21,7 @@ def main():
     try:
         generator = TestTemplateGenerator()
         if args.file_path and args.function_name:
-            use_llm = not args.no_llm
+            use_llm = args.llm
             results = [generator.generate_test_template_for_single_function(args.file_path, args.function_name, use_llm)]
         else:
             print("参数错误：请提供有效的文件路径和函数名")
