@@ -24,7 +24,7 @@ class LLMClient:
         if settings.siliconflow_api_key:
             self.siliconflow_client = OpenAI(
                 api_key=settings.siliconflow_api_key, # 从https://cloud.siliconflow.cn/account/ak获取
-                base_url="https://api.siliconflow.cn/v1"
+                base_url=settings.siliconflow_url
             )
             
 

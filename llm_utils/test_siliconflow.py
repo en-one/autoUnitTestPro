@@ -1,13 +1,12 @@
-import llm
+from .llm import LLMClient
 from config import settings
 import logging
-import llm
 # 配置日志
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def test_siliconflow():
     # 创建LLMClient实例
-    llm_client = llm.LLMClient()
+    llm_client = LLMClient()
     
     # 测试硅基流动调用
     prompt = "你好，硅基流动！"
