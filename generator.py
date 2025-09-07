@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import List, Dict, Any
-from core.code_analyzer import GoCodeAnalyzer
+from code_analyzer import GoCodeAnalyzer
 import core.constants
 from llm_utils.llm import LLMClient
 from core.config import settings
