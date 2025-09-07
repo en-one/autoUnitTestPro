@@ -11,7 +11,6 @@ logging.basicConfig(
 
 def main():
     parser = argparse.ArgumentParser(description='自动生成Go单元测试')
-    parser.add_argument('--project-path', type=str, help='Go项目路径')
     parser.add_argument('--file-path', type=str, help='包含要测试函数的文件路径')
     parser.add_argument('--function-name', type=str, help='要生成测试的函数名')
     parser.add_argument('--all-functions', action='store_true', help='为文件中的所有函数生成测试用例（与--file-path配合使用）')
@@ -29,8 +28,9 @@ def main():
             use_llm = not args.no_llm
             results = [generator.generate_test_template_for_single_function(args.file_path, args.function_name, use_llm)]
         else:
-            use_llm = not args.no_llm
-            results = generator.generate_test_templates_for_project(args.project_path, use_llm)
+            print("参数错误：请提供有效的文件路径，以及函数名或--all-functions参数")
+            parser.print_help()
+            return
         
         # 打印结果统计
         success_count = sum(1 for r in results if r['status'] == 'success')
