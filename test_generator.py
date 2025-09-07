@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict, Any
 from code_analyzer import GoCodeAnalyzer
 import constants
-from llm import LLMClient
+from llm_utils.llm import LLMClient
 from config import settings
 
 class TestTemplateGenerator:
