@@ -15,7 +15,8 @@ LLM_SUPPPLY_ARGS_PROMPT = """
    3. 如果有失败返回，挑选其中一个错误返回,作为args.wantReply.result，
    4. 根据其reply.result ，构建body入参
    5. 需要校验 tt.args.wantReply.Result 与 tt.args.reply.Resul
-   5. 无需关注其他问题，只需补充当前失败的用例
+   6. 无需关注其他问题，只需补充当前失败的用例
+   7. 返回补充后的测试代码
     
     重要提示：不得改变测试函数的结构、测试用例的定义方式或断言逻辑。
     只需在现有框架中补充具体的参数值和预期结果。

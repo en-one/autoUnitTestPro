@@ -5,6 +5,7 @@ from code_analyzer import GoCodeAnalyzer
 import core.constants
 from llm_utils.llm import LLMClient
 from core.config import settings
+from llm_utils.prompts import LLM_SUPPPLY_ARGS_PROMPT, LLM_MERGE_TEST_TEMPLATE  # 导入新模板
 
 class TestTemplateGenerator:
     def __init__(self):
@@ -53,11 +54,11 @@ class TestTemplateGenerator:
 
     def _supplement_test_params(self, function_code: str, function_name: str, test_template: str) -> str:
         """
-        调用LLM补充测试用例参数
+        调用LLM补充测试用例参数并将结果更新到原始模板中
         :param function_code: 函数代码
         :param function_name: 函数名
         :param test_template: 测试模板
-        :return: 补充参数后的测试模板
+        :return: 补充参数并更新后的测试模板
         """
         try:
             self.logger.info(f"开始调用LLM补充测试参数: 函数名={function_name}")
@@ -71,7 +72,23 @@ class TestTemplateGenerator:
                 return test_template
             
             self.logger.info(f"LLM调用成功，生成的测试代码长度: {len(supplemented_test)}")
-            return supplemented_test
+            
+            # 使用从prompts.py导入的模板，而不是内联定义
+            merge_prompt = LLM_MERGE_TEST_TEMPLATE.format(
+                test_template=test_template,
+                supplemented_test=supplemented_test
+            )
+            
+            # 调用LLM执行合并操作
+            merged_test_template = self.llm_client.generate_test(merge_prompt, function_name, model_type="siliconflow")
+            
+            # 检查合并结果是否为空
+            if not merged_test_template.strip():
+                self.logger.warning(f"LLM合并模板失败，使用生成的测试代码")
+                return supplemented_test
+            
+            self.logger.info(f"LLM成功将测试参数合并到模板中，合并后代码长度: {len(merged_test_template)}")
+            return merged_test_template
         except Exception as e:
             self.logger.error(f"调用LLM补充测试参数失败: {str(e)}")
             # 失败时返回原始模板
