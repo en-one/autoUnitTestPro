@@ -3,7 +3,6 @@ import requests
 import json
 from typing import Dict, Any, Optional
 from openai import OpenAI
-from anthropic import Anthropic
 from core.config import settings
 import core.constants
 
@@ -11,15 +10,11 @@ class LLMClient:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.openai_client = None
-        self.anthropic_client = None
         self.siliconflow_client = None
         
         # 初始化客户端
         if settings.openai_api_key:
             self.openai_client = OpenAI(api_key=settings.openai_api_key)
-        
-        if settings.anthropic_api_key:
-            self.anthropic_client = Anthropic(api_key=settings.anthropic_api_key)
         
         if settings.siliconflow_api_key:
             self.siliconflow_client = OpenAI(
@@ -27,13 +22,12 @@ class LLMClient:
                 base_url=settings.siliconflow_url
             )
             
-
     def generate_test(self, code: str, function_name: str, model_type: str = "openai") -> str:
         """
         生成Go单元测试代码
         :param code: Go函数代码
         :param function_name: 函数名
-        :param model_type: 模型类型 (openai, anthropic 或 siliconflow)
+        :param model_type: 模型类型 (openai 或 siliconflow)
         :return: 生成的测试代码
         """
         prompt = self._create_prompt(code, function_name)
@@ -41,16 +35,12 @@ class LLMClient:
         try:
             if model_type == "openai" and self.openai_client:
                 return self._call_openai(prompt)
-            elif model_type == "anthropic" and self.anthropic_client:
-                return self._call_anthropic(prompt)
             elif model_type == "siliconflow" and self.siliconflow_client:
                 return self._call_siliconflow(prompt)
             else:
                 available_models = []
                 if self.openai_client:
                     available_models.append("openai")
-                if self.anthropic_client:
-                    available_models.append("anthropic")
                 if self.siliconflow_client:
                     available_models.append("siliconflow")
                 
@@ -91,27 +81,6 @@ class LLMClient:
             return response.choices[0].message.content
         except Exception as e:
             self.logger.error(f"OpenAI调用失败: {str(e)}")
-            # 不抛出异常，返回空字符串
-            return ""
-
-    def _call_anthropic(self, prompt: str) -> str:
-        """
-        调用Anthropic模型
-        :param prompt: 提示
-        :return: 生成的文本
-        """
-        try:
-            response = self.anthropic_client.messages.create(
-                model=settings.anthropic_model,
-                max_tokens=4096,
-                system="你是一名资深的Go开发工程师，擅长编写单元测试。",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            return response.content[0].text
-        except Exception as e:
-            self.logger.error(f"Anthropic调用失败: {str(e)}")
             # 不抛出异常，返回空字符串
             return ""
 
