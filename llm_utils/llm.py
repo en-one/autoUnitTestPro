@@ -119,7 +119,8 @@ class LLMClient:
             # 处理流式响应
             try:
                 for chunk in response:
-                    self.logger.debug(f"硅基流动响应块: {chunk}")
+                    # 注释掉这行日志，取消流式响应块的打印
+                    # self.logger.debug(f"硅基流动响应块: {chunk}")
                     
                     # 处理数据块
                     if chunk.choices and len(chunk.choices) > 0:

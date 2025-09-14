@@ -25,3 +25,25 @@ LLM_SUPPPLY_ARGS_PROMPT = """
     cd 到测试文件所在目录
     go test -run Test{function_name} -v
     """
+
+# 在文件中添加以下内容
+
+LLM_MERGE_TEST_TEMPLATE = """我需要将LLM生成的测试用例参数合并到原始测试模板中。请只替换原始模板中的测试用例部分，保留其他所有内容。
+
+原始测试模板：
+{test_template}
+
+LLM生成的测试用例：
+{supplemented_test}
+
+请提供合并后的完整测试模板，不要添加任何额外的解释或说明。"""
+
+LLM_DEBUG_TEST_TEMPLATE = """以下是函数 {function_name} 的单元测试代码，但在执行时失败了。请分析测试失败的原因，并修复测试代码。
+
+测试代码：
+{current_code}
+
+测试失败输出：
+{test_output}
+
+请提供修复后的完整测试代码，不要添加任何额外的解释或说明。"""

@@ -1,11 +1,15 @@
+# 在文件顶部导入必要的模块
 import os
+import subprocess
+import time
+import re
+from typing import Dict, Any, Optional
 import logging
-from typing import List, Dict, Any
 from code_analyzer import GoCodeAnalyzer
 import core.constants
 from llm_utils.llm import LLMClient
 from core.config import settings
-from llm_utils.prompts import LLM_SUPPPLY_ARGS_PROMPT, LLM_MERGE_TEST_TEMPLATE  # 导入新模板
+from llm_utils.prompts import LLM_SUPPPLY_ARGS_PROMPT, LLM_MERGE_TEST_TEMPLATE, LLM_DEBUG_TEST_TEMPLATE  # 导入新模板
 
 class TestTemplateGenerator:
     def __init__(self):
@@ -133,7 +137,6 @@ class TestTemplateGenerator:
                 'error': f"分析文件失败: {str(e)}"
             }
         
-        print(functions)
         # 查找指定函数
         target_func = None
         for func in functions:
@@ -158,6 +161,31 @@ class TestTemplateGenerator:
             test_file_path = self._get_test_file_path(file_path)
             self._save_test_file(test_file_path, test_template_code, function_name)
             
+            # 验证测试代码并进行自动调试
+            if use_llm:
+                self.logger.info(f"开始验证测试代码: {test_file_path}")
+                debug_result = self._validate_and_debug_test(test_file_path, function_name, test_template_code)
+                if debug_result['status'] == 'success':
+                    self.logger.info(f"测试验证和调试成功: 函数名={function_name}")
+                    return {
+                        'function_name': function_name,
+                        'file_path': file_path,
+                        'test_file_path': test_file_path,
+                        'status': 'success',
+                        'message': '测试模板生成成功，已通过验证',
+                        'debug_info': debug_result
+                    }
+                else:
+                    self.logger.warning(f"测试验证和调试失败: {debug_result.get('error', '未知错误')}")
+                    return {
+                        'function_name': function_name,
+                        'file_path': file_path,
+                        'test_file_path': test_file_path,
+                        'status': 'success_with_warning',
+                        'message': '测试模板生成成功，但自动验证/调试失败',
+                        'debug_info': debug_result
+                    }
+            
             return {
                 'function_name': function_name,
                 'file_path': file_path,
@@ -176,6 +204,127 @@ class TestTemplateGenerator:
                 'error': f"保存测试文件失败: {str(e)}",
                 'test_template_code': test_template_code
             }
+
+    def _validate_and_debug_test(self, test_file_path: str, function_name: str, test_code: str) -> Dict[str, Any]:
+        """
+        验证测试代码并在失败时进行自动调试
+        :param test_file_path: 测试文件路径
+        :param function_name: 函数名
+        :param test_code: 初始测试代码
+        :return: 验证和调试结果
+        """
+        max_debug_attempts = 3  # 最大调试次数
+        current_code = test_code
+        
+        # 获取测试文件所在目录
+        test_dir = os.path.dirname(test_file_path)
+        
+        for attempt in range(max_debug_attempts):
+            self.logger.info(f"第{attempt + 1}次测试验证尝试")
+            
+            # 执行测试命令
+            test_result = self._run_go_test(test_dir, function_name)
+            
+            if test_result['success']:
+                self.logger.info(f"测试通过: {function_name}")
+                return {
+                    'status': 'success',
+                    'attempts': attempt + 1,
+                    'last_output': test_result['output']
+                }
+            
+            # 测试失败，调用大模型进行调试
+            self.logger.warning(f"测试失败，开始调试: {function_name}")
+            try:
+                # 准备调试提示
+                debug_prompt = self._prepare_debug_prompt(function_name, current_code, test_result['output'])
+                
+                # 调用LLM进行调试
+                debugged_code = self.llm_client.generate_test(debug_prompt, function_name, model_type="siliconflow")
+                
+                if not debugged_code.strip():
+                    self.logger.error("大模型返回空的调试结果")
+                    break
+                
+                # 更新当前代码并保存
+                current_code = debugged_code
+                self._save_test_file(test_file_path, current_code, function_name)
+                
+                self.logger.info(f"大模型调试成功，已更新测试代码: {function_name}")
+            except Exception as e:
+                self.logger.error(f"大模型调试失败: {str(e)}")
+                break
+        
+        # 达到最大调试次数或调试过程中出错
+        return {
+            'status': 'failed',
+            'attempts': max_debug_attempts,
+            'last_output': test_result['output'],
+            'error': '达到最大调试次数或调试过程中出错'
+        }
+        
+    def _run_go_test(self, test_dir: str, function_name: str) -> Dict[str, Any]:
+        """
+        运行Go测试命令并获取结果
+        :param test_dir: 测试文件所在目录
+        :param function_name: 函数名
+        :return: 测试结果
+        """
+        test_func_name = f"Test{function_name}"
+        command = f"go test -timeout 30s -run {test_func_name} -v"
+        
+        self.logger.info(f"在目录 {test_dir} 执行测试命令: {command}")
+        
+        try:
+            # 执行命令并捕获输出
+            result = subprocess.run(
+                command, 
+                shell=True, 
+                cwd=test_dir, 
+                capture_output=True, 
+                text=True, 
+                timeout=30  # 设置超时时间
+            )
+            
+            # 组合标准输出和标准错误
+            output = f"{result.stdout}\n{result.stderr}"
+            
+            # 判断测试是否成功
+            success = result.returncode == 0 and "PASS" in output
+            
+            return {
+                'success': success,
+                'output': output,
+                'returncode': result.returncode
+            }
+        except subprocess.TimeoutExpired:
+            self.logger.error("测试执行超时")
+            return {
+                'success': False,
+                'output': '测试执行超时',
+                'returncode': -1
+            }
+        except Exception as e:
+            self.logger.error(f"执行测试命令失败: {str(e)}")
+            return {
+                'success': False,
+                'output': f"执行测试命令失败: {str(e)}",
+                'returncode': -1
+            }
+            
+    def _prepare_debug_prompt(self, function_name: str, current_code: str, test_output: str) -> str:
+        """
+        准备调试提示信息
+        :param function_name: 函数名
+        :param current_code: 当前的测试代码
+        :param test_output: 测试输出结果
+        :return: 调试提示
+        """
+        return LLM_DEBUG_TEST_TEMPLATE.format(
+            function_name=function_name,
+            current_code=current_code,
+            test_output=test_output
+        )
 
     def _merge_imports(self, existing_code: str, new_code: str) -> str:
         """
