@@ -67,33 +67,7 @@ func Test{function_name}(t *testing.T) {{
                     Result: nil, // 根据期望结果填充
                 }},
             }},
-        }},
-        // 反例测试用例 - 参数错误
-        /* 
-            @unitFunc Test{function_name}
-            @unitCaseName fail_case_business_error
-            @unitCaseType abnormal
-            @unitCaseTargetType api
-            @unitCaseTarget {function_name}
-            @unitCaseTags {case_tags}
-            @unitCaseDesc 反例测试用例 - 业务错误
-        */
-        {{
-            name: "fail_case_invalid_params",
-            args: args{{
-                ctx: context.Background(),
-                args: &service.Args{{
-                    Queries: ucommon.GetHttpQueriesBytes(map[string]string{{}}),
-                    Body:    ucommon.GetHttpBodyBytes(map[string]interface{{}}{{}}),
-                }},
-                reply: &service.Replies{{}},
-                wantReply: &service.Replies{{
-                    Status: "fail",
-                    Code:   200,
-                    Result: nil,// 根据期望结果填充
-                }},
-            }},
-        }},
+        }}
     }}
 
     for _, tt := range tests {{

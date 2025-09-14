@@ -54,7 +54,7 @@ LLM_SUPPPLY_SUCCESS_ARGS_PROMPT = """
    2. 根据函数的正常业务逻辑，构建合理的入参和预期的成功返回结果
    3. 设置 args.wantReply.Status 为 "success"
    4. 需要校验 tt.args.wantReply.Result 与 tt.args.reply.Resul
-   5. 无需关注其他问题，只需补充当前成功的用例
+   5. 无需关注其他测试case，只需补充当前成功的用例
    6. 返回补充后的测试代码
    7. 新增的测试用例需要有文档注释
 
@@ -79,23 +79,26 @@ LLM_SUPPPLY_SUCCESS_ARGS_PROMPT = """
     只需在现有框架中补充具体的参数值和预期结果。
     """
 
-LLM_MERGE_TEST_TEMPLATE = """我需要将LLM生成的测试用例参数合并到原始测试模板中。请只替换原始模板中的测试用例部分，保留其他所有内容。
+LLM_MERGE_TEST_TEMPLATE = """
+    我需要将LLM生成的测试用例参数合并到原始测试模板中。请只替换原始模板中的测试用例部分，保留其他所有内容。
 
-原始测试模板：
-{test_template}
+    原始测试模板：
+    {test_template}
 
-LLM生成的测试用例：
-{supplemented_test}
+    LLM生成的测试用例：
+    {supplemented_test}
 
-请提供合并后的完整测试模板，不要添加任何额外的解释或说明。"""
+    请提供合并后的完整测试模板，不要添加任何额外的解释或说明。
+"""
 
 LLM_DEBUG_TEST_TEMPLATE = """
-以下是函数 {function_name} 的单元测试代码，但在执行时失败了。请分析测试失败的原因，并修复测试代码。
+    以下是函数 {function_name} 的单元测试代码，但在执行时失败了。请分析测试失败的原因，并修复测试代码。
 
-测试代码：
-{current_code}
+    测试代码：
+    {current_code}
 
-测试失败输出：
-{test_output}
+    测试失败输出：
+    {test_output}
 
-请提供修复后的完整测试代码，不要添加任何额外的解释或说明。"""
+    请提供修复后的完整测试代码，不要添加任何额外的解释或说明。
+"""

@@ -6,9 +6,6 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4o"
     
-    # Anthropic配置
-    anthropic_api_key: Optional[str] = None
-    anthropic_model: str = "claude-3-opus-20240229"
     
     # 硅基流动配置
     siliconflow_api_key: Optional[str] = None

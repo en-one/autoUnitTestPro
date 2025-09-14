@@ -161,6 +161,7 @@ class TestTemplateGenerator:
         try:
             # 获取函数的完整代码
             function_code = self.code_analyzer.get_function_code(file_path, function_name)
+            self.logger.info(f"函数代码: {function_code}")
             # 调用LLM补充测试参数
             supplemented_test_template = self._supplement_test_params(function_code, function_name, test_template, test_case_type)
             return supplemented_test_template
