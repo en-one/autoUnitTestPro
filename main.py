@@ -5,7 +5,7 @@ from core.config import settings
 
 # 配置日志
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
@@ -22,7 +22,7 @@ def main():
         generator = TestTemplateGenerator()
         if args.file_path and args.function_name:
             use_llm = args.llm
-            results = [generator.generate_test_template_for_single_function(args.file_path, args.function_name, use_llm)]
+            results = [generator.generate_test_case(args.file_path, args.function_name, use_llm)]
         else:
             print("参数错误：请提供有效的文件路径和函数名")
             parser.print_help()

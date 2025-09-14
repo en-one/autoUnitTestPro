@@ -9,7 +9,7 @@ from code_analyzer import GoCodeAnalyzer
 import core.constants
 from llm_utils.llm import LLMClient
 from core.config import settings
-from llm_utils.prompts import LLM_SUPPPLY_ARGS_PROMPT, LLM_MERGE_TEST_TEMPLATE, LLM_DEBUG_TEST_TEMPLATE  # 导入新模板
+from llm_utils.prompts import LLM_SUPPPLY_FAILCASE_ARGS_PROMPT, LLM_MERGE_TEST_TEMPLATE, LLM_DEBUG_TEST_TEMPLATE  # 导入新模板
 
 class TestTemplateGenerator:
     def __init__(self):
@@ -18,12 +18,119 @@ class TestTemplateGenerator:
         self.llm_client = LLMClient()
         self.logger.info("LLM客户端初始化完成")
 
-    def generate_test_template_for_function(self, func_info: Dict[str, Any], use_llm: bool = True) -> str:
+    def generate_test_case(self, file_path: str, function_name: str, use_llm: bool = True, test_case_type: str = "both") -> Dict[str, Any]:
         """
-        为单个函数生成测试用例模板
-        :param func_info: 函数信息
+        为单个函数生成单元测试用例模板
+        :param file_path: 包含函数的文件路径
+        :param function_name: 要生成测试用例模板的函数名
         :param use_llm: 是否使用LLM补充测试用例参数，默认为True
-        :return: 生成的测试用例模板代码
+        :param test_case_type: 测试用例类型，可选值: "fail"、"success"、"both"（默认）
+        :return: 生成的测试模板信息
+        """
+        if not os.path.exists(file_path):
+            self.logger.error(f"文件不存在: {file_path}")
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"文件不存在: {file_path}"
+            }
+        
+        # 分析指定文件
+        try:
+            functions = self.code_analyzer.analyze_file(file_path)
+        except Exception as e:
+            self.logger.error(f"分析文件{file_path}失败: {str(e)}")
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"分析文件失败: {str(e)}"
+            }
+        
+        # 查找指定函数
+        target_func = None
+        for func in functions:
+            if func['name'] == function_name:
+                target_func = func
+                break
+        
+        if not target_func:
+            self.logger.error(f"在文件{file_path}中未找到函数{function_name}")
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'status': 'failed',
+                'error': f"未找到函数{function_name}"
+            }
+        
+        try:
+            # 1.生成基础测试模板
+            test_template_code = self.generate_test_case_template(target_func)
+             # 保存测试代码
+            # test_file_path = self._get_test_file_path(file_path)
+            # self._save_test_file(test_file_path, test_template_code, function_name)
+            
+            # 2. 如果启用LLM，则尝试调用LLM补充测试参数
+            if use_llm:
+                test_case_type = "fail"
+                self.logger.info(f"启用LLM，开始补充测试参数: 函数名={function_name}, 测试类型={test_case_type}")
+                test_template_code = self.enhance_test_with_params(file_path, function_name, test_template_code, test_case_type)
+            else:
+                self.logger.info(f"未启用LLM，直接使用基础测试模板: 函数名={function_name}")
+            
+            # 保存测试代码
+            test_file_path = self._get_test_file_path(file_path)
+            self._save_test_file(test_file_path, test_template_code, function_name)
+            
+            # 验证测试代码并进行自动调试
+            # if use_llm:
+            #     self.logger.info(f"开始验证测试代码: {test_file_path}")
+            #     debug_result = self._validate_and_debug_test(test_file_path, function_name, test_template_code)
+            #     if debug_result['status'] == 'success':
+            #         self.logger.info(f"测试验证和调试成功: 函数名={function_name}")
+            #         return {
+            #             'function_name': function_name,
+            #             'file_path': file_path,
+            #             'test_file_path': test_file_path,
+            #             'status': 'success',
+            #             'message': '测试模板生成成功，已通过验证',
+            #             'debug_info': debug_result
+            #         }
+            #     else:
+            #         self.logger.warning(f"测试验证和调试失败: {debug_result.get('error', '未知错误')}")
+            #         return {
+            #             'function_name': function_name,
+            #             'file_path': file_path,
+            #             'test_file_path': test_file_path,
+            #             'status': 'success_with_warning',
+            #             'message': '测试模板生成成功，但自动验证/调试失败',
+            #             'debug_info': debug_result
+            #         }
+            
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'test_file_path': test_file_path,
+                'status': 'success',
+                'message': '测试模板生成成功，已保存到指定路径'
+            }
+        except Exception as e:
+            self.logger.error(f"保存测试文件失败: {str(e)}")
+            
+            # 尝试直接返回生成的测试模板代码（即使保存失败）
+            return {
+                'function_name': function_name,
+                'file_path': file_path,
+                'status': 'partially_failed',
+                'error': f"保存测试文件失败: {str(e)}",
+                'test_template_code': test_template_code
+            }
+    def generate_test_case_template(self, func_info: Dict[str, Any]) -> str:
+        """
+        为单个函数生成基础测试用例模板
+        :param func_info: 函数信息
+        :return: 生成的基础测试用例模板代码
         """
         function_name = func_info['name']
         file_path = func_info['file_path']
@@ -33,54 +140,88 @@ class TestTemplateGenerator:
         target_dir = os.path.dirname(file_path)
         package_name = os.path.basename(target_dir)
         
-        # 1. 优先生成基础测试模板
+        # 生成基础测试模板
         test_template = core.constants.TEST_FUNCTION_TEMPLATE.format(
             package_name=package_name,
             function_name=function_name,
             case_tags=case_tags,
         )
         
-        # 2. 如果启用LLM，则尝试调用LLM补充测试参数
-        if use_llm:
-            try:
-                # 获取函数的完整代码
-                function_code = self.code_analyzer.get_function_code(file_path, function_name)
-                # 调用LLM补充测试参数
-                supplemented_test_template = self._supplement_test_params(function_code, function_name, test_template)
-                return supplemented_test_template
-            except Exception as e:
-                self.logger.error(f"调用LLM补充测试参数失败，使用基础模板: {str(e)}")
-                # 失败时返回基础模板
-                return test_template
-        else:
-            self.logger.info(f"未启用LLM，直接返回基础测试模板: 函数名={function_name}")
+        return test_template
+        
+    def enhance_test_with_params(self, file_path: str, function_name: str, test_template: str, test_case_type: str = "both") -> str:
+        """
+        调用LLM补充测试用例参数并将结果更新到测试模板中
+        :param file_path: 包含函数的文件路径
+        :param function_name: 函数名
+        :param test_template: 基础测试模板
+        :param test_case_type: 测试用例类型，可选值: "fail"、"success"、"both"（默认）
+        :return: 补充参数并更新后的测试模板
+        """
+        try:
+            # 获取函数的完整代码
+            function_code = self.code_analyzer.get_function_code(file_path, function_name)
+            # 调用LLM补充测试参数
+            supplemented_test_template = self._supplement_test_params(function_code, function_name, test_template, test_case_type)
+            return supplemented_test_template
+        except Exception as e:
+            self.logger.error(f"调用LLM补充测试参数失败，使用基础模板: {str(e)}")
+            # 失败时返回基础模板
             return test_template
 
-    def _supplement_test_params(self, function_code: str, function_name: str, test_template: str) -> str:
+    def _supplement_test_params(self, function_code: str, function_name: str, test_template: str, test_case_type: str = "both") -> str:
         """
         调用LLM补充测试用例参数并将结果更新到原始模板中
         :param function_code: 函数代码
         :param function_name: 函数名
         :param test_template: 测试模板
+        :param test_case_type: 测试用例类型，可选值: "fail"、"success"、"both"（默认）
         :return: 补充参数并更新后的测试模板
         """
         try:
-            self.logger.info(f"开始调用LLM补充测试参数: 函数名={function_name}")
-            # 调用LLM生成补充参数的测试用例
-            # 使用硅基流动模型生成测试用例
-            supplemented_test = self.llm_client.generate_test(function_code, function_name, model_type="siliconflow")
+            self.logger.info(f"开始调用LLM补充测试参数: 函数名={function_name}, 测试类型={test_case_type}")
             
-            # 检查返回结果是否为空
-            if not supplemented_test.strip():
-                self.logger.warning(f"LLM返回空结果，使用基础模板")
+            # 初始化测试用例
+            fail_test = ""
+            success_test = ""
+            
+            # 根据测试用例类型生成相应的测试用例
+            if test_case_type in ["fail", "both"]:
+                # 生成失败测试用例
+                self.logger.info(f"生成失败测试用例: 函数名={function_name}")
+                fail_test = self.llm_client.generate_test(function_code, function_name, model_type="siliconflow", test_type="fail")
+                
+                # 检查失败测试用例结果是否为空
+                if not fail_test.strip():
+                    self.logger.warning(f"LLM返回空失败测试用例")
+            
+            if test_case_type in ["success", "both"]:
+                # 生成成功测试用例
+                self.logger.info(f"生成成功测试用例: 函数名={function_name}")
+                success_test = self.llm_client.generate_test(function_code, function_name, model_type="siliconflow", test_type="success")
+                
+                # 检查成功测试用例结果是否为空
+                if not success_test.strip():
+                    self.logger.warning(f"LLM返回空成功测试用例")
+            
+            # 合并两个测试用例
+            combined_test = ""
+            if fail_test.strip() and success_test.strip():
+                combined_test = f"{fail_test}\n{success_test}"
+            elif fail_test.strip():
+                combined_test = fail_test
+            elif success_test.strip():
+                combined_test = success_test
+            else:
+                self.logger.warning(f"LLM返回空测试用例结果，使用基础模板")
                 return test_template
             
-            self.logger.info(f"LLM调用成功，生成的测试代码长度: {len(supplemented_test)}")
+            self.logger.info(f"LLM调用成功，生成的测试代码总长度: {len(combined_test)}")
             
             # 使用从prompts.py导入的模板，而不是内联定义
             merge_prompt = LLM_MERGE_TEST_TEMPLATE.format(
                 test_template=test_template,
-                supplemented_test=supplemented_test
+                supplemented_test=combined_test
             )
             
             # 调用LLM执行合并操作
@@ -89,7 +230,7 @@ class TestTemplateGenerator:
             # 检查合并结果是否为空
             if not merged_test_template.strip():
                 self.logger.warning(f"LLM合并模板失败，使用生成的测试代码")
-                return supplemented_test
+                return combined_test
             
             # 清理生成的代码，移除非代码内容
             cleaned_test = self._clean_generated_code(merged_test_template)
@@ -154,102 +295,6 @@ class TestTemplateGenerator:
         base_name = os.path.splitext(file_name)[0]
         return os.path.join(dir_name, f"{base_name}_test.go")
     
-    def generate_test_template_for_single_function(self, file_path: str, function_name: str, use_llm: bool = True) -> Dict[str, Any]:
-        """
-        为单个函数生成单元测试用例模板
-        :param file_path: 包含函数的文件路径
-        :param function_name: 要生成测试用例模板的函数名
-        :param use_llm: 是否使用LLM补充测试用例参数，默认为True
-        :return: 生成的测试模板信息
-        """
-        if not os.path.exists(file_path):
-            self.logger.error(f"文件不存在: {file_path}")
-            return {
-                'function_name': function_name,
-                'file_path': file_path,
-                'status': 'failed',
-                'error': f"文件不存在: {file_path}"
-            }
-        
-        # 分析指定文件
-        try:
-            functions = self.code_analyzer.analyze_file(file_path)
-        except Exception as e:
-            self.logger.error(f"分析文件{file_path}失败: {str(e)}")
-            return {
-                'function_name': function_name,
-                'file_path': file_path,
-                'status': 'failed',
-                'error': f"分析文件失败: {str(e)}"
-            }
-        
-        # 查找指定函数
-        target_func = None
-        for func in functions:
-            if func['name'] == function_name:
-                target_func = func
-                break
-        
-        if not target_func:
-            self.logger.error(f"在文件{file_path}中未找到函数{function_name}")
-            return {
-                'function_name': function_name,
-                'file_path': file_path,
-                'status': 'failed',
-                'error': f"未找到函数{function_name}"
-            }
-        
-        try:
-            # 生成测试代码 - 确保即使LLM调用失败也能返回基础模板
-            test_template_code = self.generate_test_template_for_function(target_func, use_llm)
-            
-            # 保存测试代码
-            test_file_path = self._get_test_file_path(file_path)
-            self._save_test_file(test_file_path, test_template_code, function_name)
-            
-            # 验证测试代码并进行自动调试
-            # if use_llm:
-            #     self.logger.info(f"开始验证测试代码: {test_file_path}")
-            #     debug_result = self._validate_and_debug_test(test_file_path, function_name, test_template_code)
-            #     if debug_result['status'] == 'success':
-            #         self.logger.info(f"测试验证和调试成功: 函数名={function_name}")
-            #         return {
-            #             'function_name': function_name,
-            #             'file_path': file_path,
-            #             'test_file_path': test_file_path,
-            #             'status': 'success',
-            #             'message': '测试模板生成成功，已通过验证',
-            #             'debug_info': debug_result
-            #         }
-            #     else:
-            #         self.logger.warning(f"测试验证和调试失败: {debug_result.get('error', '未知错误')}")
-            #         return {
-            #             'function_name': function_name,
-            #             'file_path': file_path,
-            #             'test_file_path': test_file_path,
-            #             'status': 'success_with_warning',
-            #             'message': '测试模板生成成功，但自动验证/调试失败',
-            #             'debug_info': debug_result
-            #         }
-            
-            return {
-                'function_name': function_name,
-                'file_path': file_path,
-                'test_file_path': test_file_path,
-                'status': 'success',
-                'message': '测试模板生成成功，已保存到指定路径'
-            }
-        except Exception as e:
-            self.logger.error(f"保存测试文件失败: {str(e)}")
-            
-            # 尝试直接返回生成的测试模板代码（即使保存失败）
-            return {
-                'function_name': function_name,
-                'file_path': file_path,
-                'status': 'partially_failed',
-                'error': f"保存测试文件失败: {str(e)}",
-                'test_template_code': test_template_code
-            }
 
     def _validate_and_debug_test(self, test_file_path: str, function_name: str, test_code: str) -> Dict[str, Any]:
         """

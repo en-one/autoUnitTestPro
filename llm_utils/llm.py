@@ -22,15 +22,16 @@ class LLMClient:
                 base_url=settings.siliconflow_url
             )
             
-    def generate_test(self, code: str, function_name: str, model_type: str = "openai") -> str:
+    def generate_test(self, code: str, function_name: str, model_type: str = "openai", test_type: str = "fail") -> str:
         """
         生成Go单元测试代码
         :param code: Go函数代码
         :param function_name: 函数名
         :param model_type: 模型类型 (openai 或 siliconflow)
+        :param test_type: 测试类型 (fail 或 success)
         :return: 生成的测试代码
         """
-        prompt = self._create_prompt(code, function_name)
+        prompt = self._create_prompt(code, function_name, test_type)
         
         try:
             if model_type == "openai" and self.openai_client:
@@ -52,17 +53,24 @@ class LLMClient:
             # 不抛出异常，返回空字符串，让调用者处理
             return ""
 
-    def _create_prompt(self, code: str, function_name: str) -> str:
+    def _create_prompt(self, code: str, function_name: str, test_type: str = "fail") -> str:
         """
         创建生成测试的提示
         :param code: Go函数代码
         :param function_name: 函数名
+        :param test_type: 测试类型 (fail 或 success)
         :return: 提示字符串
         """
-        return core.constants.LLM_SUPPPLY_ARGS_PROMPT.format(
-            code=code,
-            function_name=function_name
-        )
+        if test_type == "success":
+            return core.constants.LLM_SUPPPLY_SUCCESS_ARGS_PROMPT.format(
+                code=code,
+                function_name=function_name
+            )
+        else:
+            return core.constants.LLM_SUPPPLY_FAILCASE_ARGS_PROMPT.format(
+                code=code,
+                function_name=function_name
+            )
 
     def _call_openai(self, prompt: str) -> str:
         """
@@ -131,7 +139,7 @@ class LLMClient:
                 self.logger.error(f"硅基流动流式响应处理失败: {str(e)}", exc_info=True)
                 raise
             
-            self.logger.debug(f"硅基流动完整响应: {full_response}")
+            self.logger.info(f"硅基流动完整响应: {full_response}")
             return full_response
         except requests.exceptions.HTTPError as e:
             self.logger.error(f"硅基流动HTTP错误: {str(e)}")

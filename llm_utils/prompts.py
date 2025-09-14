@@ -1,6 +1,6 @@
 # 大模型提示模板
 
-LLM_SUPPPLY_ARGS_PROMPT = """
+LLM_SUPPPLY_FAILCASE_ARGS_PROMPT = """
     我们现在已经完成了测试代码框架的生成，接下来需要补充测试用例的参数。
     请严格遵循以下要求：
     
@@ -16,31 +16,68 @@ LLM_SUPPPLY_ARGS_PROMPT = """
    4. 根据其reply.result ，构建body入参
    5. 需要校验 tt.args.wantReply.Result 与 tt.args.reply.Resul
    6. 无需关注其他问题，只需补充当前失败的用例
-   7. 返回补充后的测试代码
+   7. 返回补充后的测试代码，
    8. 新增的测试用例需要有文档注释
+
+    一些包的引用:
+   ```
+    "context"
+    	"testing"
+   
+    	"git.shining3d.com/cloud/acala/errorCode"
+    	"git.shining3d.com/cloud/dental/common"
+    	commonOrg "git.shining3d.com/cloud/dental/common/org"
+    	"git.shining3d.com/cloud/dental/models"
+    	ucommon "git.shining3d.com/cloud/util/common"
+   
+    	"git.shining3d.com/cloud/dental/unit"
+    	"git.shining3d.com/cloud/mythology/pkg/service"
+    	"github.com/stretchr/testify/assert"
+   ```
+    
+    重要提示：
+    1.不得改变测试函数的结构、测试用例的定义方式或断言逻辑。
+    2.只需在现有框架中补充具体的参数值和预期结果。
+    """
+
+LLM_SUPPPLY_SUCCESS_ARGS_PROMPT = """
+    我们现在已经完成了测试代码框架的生成，接下来需要补充测试用例的参数。
+    请严格遵循以下要求：
+    
+    函数代码:
+    {code}
+
+    函数名: {function_name}
+
+    测试代码补充规则:
+   1. 列举下，当reply.Status 为success时， reply.result的返回值结构
+   2. 根据函数的正常业务逻辑，构建合理的入参和预期的成功返回结果
+   3. 设置 args.wantReply.Status 为 "success"
+   4. 需要校验 tt.args.wantReply.Result 与 tt.args.reply.Resul
+   5. 无需关注其他问题，只需补充当前成功的用例
+   6. 返回补充后的测试代码
+   7. 新增的测试用例需要有文档注释
 
     一些包的引用
 
    ```
     "context"
-   	"testing"
+    	"testing"
    
-   	"git.shining3d.com/cloud/acala/errorCode"
-   	"git.shining3d.com/cloud/dental/common"
-   	commonOrg "git.shining3d.com/cloud/dental/common/org"
-   	"git.shining3d.com/cloud/dental/models"
-   	ucommon "git.shining3d.com/cloud/util/common"
+    	"git.shining3d.com/cloud/acala/errorCode"
+    	"git.shining3d.com/cloud/dental/common"
+    	commonOrg "git.shining3d.com/cloud/dental/common/org"
+    	"git.shining3d.com/cloud/dental/models"
+    	ucommon "git.shining3d.com/cloud/util/common"
    
-   	"git.shining3d.com/cloud/dental/unit"
-   	"git.shining3d.com/cloud/mythology/pkg/service"
-   	"github.com/stretchr/testify/assert"
+    	"git.shining3d.com/cloud/dental/unit"
+    	"git.shining3d.com/cloud/mythology/pkg/service"
+    	"github.com/stretchr/testify/assert"
    ```
     
     重要提示：不得改变测试函数的结构、测试用例的定义方式或断言逻辑。
     只需在现有框架中补充具体的参数值和预期结果。
     """
-
-# 在文件中添加以下内容
 
 LLM_MERGE_TEST_TEMPLATE = """我需要将LLM生成的测试用例参数合并到原始测试模板中。请只替换原始模板中的测试用例部分，保留其他所有内容。
 
@@ -52,7 +89,8 @@ LLM生成的测试用例：
 
 请提供合并后的完整测试模板，不要添加任何额外的解释或说明。"""
 
-LLM_DEBUG_TEST_TEMPLATE = """以下是函数 {function_name} 的单元测试代码，但在执行时失败了。请分析测试失败的原因，并修复测试代码。
+LLM_DEBUG_TEST_TEMPLATE = """
+以下是函数 {function_name} 的单元测试代码，但在执行时失败了。请分析测试失败的原因，并修复测试代码。
 
 测试代码：
 {current_code}

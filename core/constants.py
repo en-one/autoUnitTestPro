@@ -105,11 +105,11 @@ func Test{function_name}(t *testing.T) {{
             assert.Equal(t, tt.args.wantReply.Status, tt.args.reply.Status)
             assert.Equal(t, tt.args.wantReply.Code, tt.args.reply.Code)
             // 注意：实际测试中可能需要根据返回结果的结构调整断言方式
-            // assert.Equal(t, tt.args.wantReply.Result, tt.args.reply.Result)
+            assert.Equal(t, tt.args.wantReply.Result, tt.args.reply.Result)
         }})
     }}
 
 }}"""
 
 # 从llm_utils导入提示模板
-from llm_utils.prompts import LLM_SUPPPLY_ARGS_PROMPT
+from llm_utils.prompts import LLM_SUPPPLY_FAILCASE_ARGS_PROMPT, LLM_SUPPPLY_SUCCESS_ARGS_PROMPT
