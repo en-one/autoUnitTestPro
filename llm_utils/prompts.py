@@ -17,6 +17,24 @@ LLM_SUPPPLY_ARGS_PROMPT = """
    5. 需要校验 tt.args.wantReply.Result 与 tt.args.reply.Resul
    6. 无需关注其他问题，只需补充当前失败的用例
    7. 返回补充后的测试代码
+   8. 新增的测试用例需要有文档注释
+
+    一些包的引用
+
+   ```
+    "context"
+   	"testing"
+   
+   	"git.shining3d.com/cloud/acala/errorCode"
+   	"git.shining3d.com/cloud/dental/common"
+   	commonOrg "git.shining3d.com/cloud/dental/common/org"
+   	"git.shining3d.com/cloud/dental/models"
+   	ucommon "git.shining3d.com/cloud/util/common"
+   
+   	"git.shining3d.com/cloud/dental/unit"
+   	"git.shining3d.com/cloud/mythology/pkg/service"
+   	"github.com/stretchr/testify/assert"
+   ```
     
     重要提示：不得改变测试函数的结构、测试用例的定义方式或断言逻辑。
     只需在现有框架中补充具体的参数值和预期结果。
