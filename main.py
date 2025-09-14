@@ -1,5 +1,7 @@
-import logging
 import argparse
+import time
+import logging
+
 from generator import TestTemplateGenerator
 from core.config import settings
 
@@ -10,6 +12,9 @@ logging.basicConfig(
 )
 
 def main():
+    # 记录开始时间
+    start_time = time.time()
+    
     parser = argparse.ArgumentParser(description='自动生成Go单元测试')
     parser.add_argument('--file-path', type=str, help='包含要测试函数的文件路径')
     parser.add_argument('--function-name', type=str, help='要生成测试的函数名')
@@ -26,23 +31,34 @@ def main():
         else:
             print("参数错误：请提供有效的文件路径和函数名")
             parser.print_help()
-            return
-        
         # 打印结果统计
-        success_count = sum(1 for r in results if r['status'] == 'success')
-        failed_count = sum(1 for r in results if r['status'] == 'failed')
+        # 检查results变量是否存在且有值
+        success_count = 0
+        failed_count = 0
         
-        print(f"\n测试生成完成!")
-        print(f"成功生成: {success_count}")
-        print(f"生成失败: {failed_count}")
-        
-        if failed_count > 0:
-            print("\n失败的函数:")
-            for r in results:
-                if r['status'] == 'failed':
-                    print(f"- {r['function_name']} ({r['file_path']}): {r['error']}")
+        if 'results' in locals() and results:
+            success_count = sum(1 for r in results if r['status'] == 'success')
+            failed_count = sum(1 for r in results if r['status'] == 'failed')
+            
+            print(f"\n测试生成完成!")
+            print(f"成功生成: {success_count}")
+            print(f"生成失败: {failed_count}")
+            
+            if failed_count > 0:
+                print("\n失败的函数:")
+                for r in results:
+                    if r['status'] == 'failed':
+                        print(f"- {r['function_name']} ({r['file_path']}): {r['error']}")
+        # 记录结束时间并计算耗时
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"\n总耗时: {elapsed_time:.2f}秒")
     except Exception as e:
+        # 即使发生异常也记录耗时
+        end_time = time.time()
+        elapsed_time = end_time - start_time
         print(f"生成测试时发生错误: {str(e)}")
+        print(f"总耗时: {elapsed_time:.2f}秒")
         logging.error(f"生成测试时发生错误: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":
