@@ -91,12 +91,58 @@ class TestTemplateGenerator:
                 self.logger.warning(f"LLM合并模板失败，使用生成的测试代码")
                 return supplemented_test
             
-            self.logger.info(f"LLM成功将测试参数合并到模板中，合并后代码长度: {len(merged_test_template)}")
-            return merged_test_template
+            # 清理生成的代码，移除非代码内容
+            cleaned_test = self._clean_generated_code(merged_test_template)
+            
+            self.logger.info(f"LLM成功将测试参数合并到模板中，合并后代码长度: {len(cleaned_test)}")
+            return cleaned_test
         except Exception as e:
             self.logger.error(f"调用LLM补充测试参数失败: {str(e)}")
             # 失败时返回原始模板
             return test_template
+
+    def _clean_generated_code(self, code: str) -> str:
+        """
+        清理生成的代码，移除非代码内容
+        :param code: 生成的代码
+        :return: 清理后的代码
+        """
+        try:
+            # 首先检查是否有代码块标记
+            if '```go' in code:
+                # 提取代码块内容
+                start_idx = code.find('```go') + len('```go')
+                end_idx = code.rfind('```')
+                if start_idx < end_idx:
+                    code = code[start_idx:end_idx].strip()
+            
+            # 移除注释性文字（如测试执行命令等）
+            lines = code.split('\n')
+            cleaned_lines = []
+            skip_section = False
+            
+            for line in lines:
+                # 跳过注释掉的测试执行命令部分
+                if '测试执行命令:' in line or '# 测试执行命令:' in line:
+                    skip_section = True
+                    continue
+                if skip_section and ('```bash' in line or '```' in line):
+                    skip_section = False
+                    continue
+                if skip_section:
+                    continue
+                
+                # 移除主要变更等说明文字
+                if '主要变更:' in line or '测试执行命令:' in line or '请查看' in line:
+                    continue
+                
+                # 保留代码行
+                cleaned_lines.append(line)
+            
+            return '\n'.join(cleaned_lines)
+        except Exception as e:
+            self.logger.warning(f"清理生成的代码时出错: {str(e)}")
+            return code
 
     def _get_test_file_path(self, source_file_path: str) -> str:
         """
@@ -162,29 +208,29 @@ class TestTemplateGenerator:
             self._save_test_file(test_file_path, test_template_code, function_name)
             
             # 验证测试代码并进行自动调试
-            if use_llm:
-                self.logger.info(f"开始验证测试代码: {test_file_path}")
-                debug_result = self._validate_and_debug_test(test_file_path, function_name, test_template_code)
-                if debug_result['status'] == 'success':
-                    self.logger.info(f"测试验证和调试成功: 函数名={function_name}")
-                    return {
-                        'function_name': function_name,
-                        'file_path': file_path,
-                        'test_file_path': test_file_path,
-                        'status': 'success',
-                        'message': '测试模板生成成功，已通过验证',
-                        'debug_info': debug_result
-                    }
-                else:
-                    self.logger.warning(f"测试验证和调试失败: {debug_result.get('error', '未知错误')}")
-                    return {
-                        'function_name': function_name,
-                        'file_path': file_path,
-                        'test_file_path': test_file_path,
-                        'status': 'success_with_warning',
-                        'message': '测试模板生成成功，但自动验证/调试失败',
-                        'debug_info': debug_result
-                    }
+            # if use_llm:
+            #     self.logger.info(f"开始验证测试代码: {test_file_path}")
+            #     debug_result = self._validate_and_debug_test(test_file_path, function_name, test_template_code)
+            #     if debug_result['status'] == 'success':
+            #         self.logger.info(f"测试验证和调试成功: 函数名={function_name}")
+            #         return {
+            #             'function_name': function_name,
+            #             'file_path': file_path,
+            #             'test_file_path': test_file_path,
+            #             'status': 'success',
+            #             'message': '测试模板生成成功，已通过验证',
+            #             'debug_info': debug_result
+            #         }
+            #     else:
+            #         self.logger.warning(f"测试验证和调试失败: {debug_result.get('error', '未知错误')}")
+            #         return {
+            #             'function_name': function_name,
+            #             'file_path': file_path,
+            #             'test_file_path': test_file_path,
+            #             'status': 'success_with_warning',
+            #             'message': '测试模板生成成功，但自动验证/调试失败',
+            #             'debug_info': debug_result
+            #         }
             
             return {
                 'function_name': function_name,
@@ -213,7 +259,7 @@ class TestTemplateGenerator:
         :param test_code: 初始测试代码
         :return: 验证和调试结果
         """
-        max_debug_attempts = 3  # 最大调试次数
+        max_debug_attempts = 5  # 最大调试次数
         current_code = test_code
         
         # 获取测试文件所在目录

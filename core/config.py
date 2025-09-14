@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # 硅基流动配置
     siliconflow_api_key: Optional[str] = None
     siliconflow_model: str = "Pro/deepseek-ai/DeepSeek-R1"
+    #  siliconflow_model: str = "Pro/deepseek-ai/DeepSeek-V3.1"
     siliconflow_url: str = "https://api.siliconflow.cn/v1"
     
     # 项目配置
