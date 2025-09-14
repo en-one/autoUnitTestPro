@@ -114,7 +114,7 @@ class LLMClient:
             self.logger.debug(f"硅基流动请求参数: {payload}")
             # response = self.siliconflow_client.post(settings.siliconflow_url, json=payload, stream=True)
             response = self.siliconflow_client.chat.completions.create(
-                model="Pro/deepseek-ai/DeepSeek-R1",
+                model= settings.siliconflow_model,
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
