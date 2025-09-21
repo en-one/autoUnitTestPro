@@ -71,50 +71,39 @@ class TestTemplateGenerator:
             test_file_path = self._get_test_file_path(file_path)
             self._save_test_file(test_file_path, test_template_code, function_name)
             
-            # 2. 如果启用LLM，则尝试调用LLM补充测试参数
-            if use_llm:
-                test_case_type = "fail"
-                self.logger.info(f"启用LLM，开始补充测试参数: 函数名={function_name}, 测试类型={test_case_type}")
-                test_template_code = self.enhance_test_with_params(file_path, function_name, test_template_code, test_case_type)
-            else:
-                self.logger.info(f"未启用LLM，直接使用基础测试模板: 函数名={function_name}")
-            
+            # 2. 调用LLM补充测试参数
+            test_case_type = "fail"
+            self.logger.info(f"启用LLM，开始补充测试参数: 函数名={function_name}, 测试类型={test_case_type}")
+            test_template_code = self.enhance_test_with_params(file_path, function_name, test_template_code, test_case_type)
             # 保存测试代码
             test_file_path = self._get_test_file_path(file_path)
             self._save_test_file(test_file_path, test_template_code, function_name, mode="update")
             
-            # 验证测试代码并进行自动调试
-            # if use_llm:
-            #     self.logger.info(f"开始验证测试代码: {test_file_path}")
-            #     debug_result = self._validate_and_debug_test(test_file_path, function_name, test_template_code)
-            #     if debug_result['status'] == 'success':
-            #         self.logger.info(f"测试验证和调试成功: 函数名={function_name}")
-            #         return {
-            #             'function_name': function_name,
-            #             'file_path': file_path,
-            #             'test_file_path': test_file_path,
-            #             'status': 'success',
-            #             'message': '测试模板生成成功，已通过验证',
-            #             'debug_info': debug_result
-            #         }
-            #     else:
-            #         self.logger.warning(f"测试验证和调试失败: {debug_result.get('error', '未知错误')}")
-            #         return {
-            #             'function_name': function_name,
-            #             'file_path': file_path,
-            #             'test_file_path': test_file_path,
-            #             'status': 'success_with_warning',
-            #             'message': '测试模板生成成功，但自动验证/调试失败',
-            #             'debug_info': debug_result
-            #         }
-            
-            return {
-                'function_name': function_name,
-                'file_path': file_path,
-                'test_file_path': test_file_path,
-                'status': 'success',
-                'message': '测试模板生成成功，已保存到指定路径'
-            }
+            # 3. 验证测试代码并进行自动调试
+            self.logger.info(f"开始验证测试代码: {test_file_path}")
+            debug_result = self._validate_and_debug_test(test_file_path, function_name, test_template_code)
+            if debug_result['status'] == 'success':
+                self.logger.info(f"测试验证和调试成功: 函数名={function_name}")
+                return {
+                    'function_name': function_name,
+                    'file_path': file_path,
+                    'test_file_path': test_file_path,
+                    'status': 'success',
+                    'message': '测试模板生成成功，已通过验证',
+                    'debug_info': debug_result
+                }
+            else:
+                self.logger.warning(f"测试验证和调试失败: {debug_result.get('error', '未知错误')}")
+                return {
+                    'function_name': function_name,
+                    'file_path': file_path,
+                    'test_file_path': test_file_path,
+                    'status': 'success_with_warning',
+                    'message': '测试模板生成成功，但自动验证/调试失败',
+                    'debug_info': debug_result
+                }
+
+
         except Exception as e:
             self.logger.error(f"保存测试文件失败: {str(e)}")
             
