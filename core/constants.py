@@ -67,7 +67,7 @@ func Test{function_name}(t *testing.T) {{
                     Result: nil, // 根据期望结果填充
                 }},
             }},
-        }}
+        }},
     }}
 
     for _, tt := range tests {{

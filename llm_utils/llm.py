@@ -58,7 +58,7 @@ class LLMClient:
         创建生成测试的提示
         :param code: Go函数代码
         :param function_name: 函数名
-        :param test_type: 测试类型 (fail 或 success)
+        :param test_type: 测试类型 (fail, success 或 both)
         :return: 提示字符串
         """
         if test_type == "success":
@@ -66,6 +66,9 @@ class LLMClient:
                 code=code,
                 function_name=function_name
             )
+        elif test_type == "both":
+            # 同时生成成功和失败测试用例的提示
+            return f"请同时生成以下函数的成功和失败测试用例：\n函数名: {function_name}\n函数代码:\n{code}\n\n请分别生成成功测试用例和失败测试用例，并确保两个测试用例都有完整的参数和预期结果。"
         else:
             return core.constants.LLM_SUPPPLY_FAILCASE_ARGS_PROMPT.format(
                 code=code,

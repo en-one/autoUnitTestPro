@@ -68,8 +68,8 @@ class TestTemplateGenerator:
             # 1.生成基础测试模板
             test_template_code = self.generate_test_case_template(target_func)
              # 保存测试代码
-            # test_file_path = self._get_test_file_path(file_path)
-            # self._save_test_file(test_file_path, test_template_code, function_name)
+            test_file_path = self._get_test_file_path(file_path)
+            self._save_test_file(test_file_path, test_template_code, function_name)
             
             # 2. 如果启用LLM，则尝试调用LLM补充测试参数
             if use_llm:
@@ -81,7 +81,7 @@ class TestTemplateGenerator:
             
             # 保存测试代码
             test_file_path = self._get_test_file_path(file_path)
-            self._save_test_file(test_file_path, test_template_code, function_name)
+            self._save_test_file(test_file_path, test_template_code, function_name, mode="update")
             
             # 验证测试代码并进行自动调试
             # if use_llm:
@@ -340,7 +340,7 @@ class TestTemplateGenerator:
                 
                 # 更新当前代码并保存
                 current_code = debugged_code
-                self._save_test_file(test_file_path, current_code, function_name)
+                self._save_test_file(test_file_path, current_code, function_name, mode="update")
                 
                 self.logger.info(f"大模型调试成功，已更新测试代码: {function_name}")
             except Exception as e:
@@ -527,12 +527,13 @@ class TestTemplateGenerator:
 
         return merged_code
 
-    def _save_test_file(self, test_file_path: str, test_template_code: str, function_name: str) -> None:
+    def _save_test_file(self, test_file_path: str, test_template_code: str, function_name: str, mode: str = "add") -> None:
         """
         保存测试用例模板文件
         :param test_file_path: 测试文件路径
         :param test_template_code: 测试用例模板代码
         :param function_name: 函数名
+        :param mode: 保存模式，可选值: "add"（默认，仅当测试不存在时添加）或 "update"（覆盖已存在的测试）
         """
         # 检查文件是否存在
         if os.path.exists(test_file_path):
@@ -544,9 +545,28 @@ class TestTemplateGenerator:
             test_func_name = f"Test{function_name}"
             has_test_func = f"func {test_func_name}(" in content
             
-            if has_test_func:
+            if has_test_func and mode == "add":
                 self.logger.warning(f"函数{function_name}的测试已存在于{test_file_path}")
                 return
+            elif has_test_func and mode == "update":
+                # 移除已存在的测试函数
+                self.logger.info(f"更新函数{function_name}的测试用例")
+                # 找到函数的开始和结束位置
+                func_start_pos = content.find(f"func {test_func_name}(")
+                if func_start_pos != -1:
+                    # 查找函数的结束位置（需要找到匹配的花括号）
+                    brace_count = 0
+                    i = func_start_pos
+                    while i < len(content):
+                        if content[i] == '{':
+                            brace_count += 1
+                        elif content[i] == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                break
+                        i += 1
+                    # 移除旧的测试函数
+                    content = content[:func_start_pos] + content[i+1:]
             
             # 检查文件夹下是否已有TestMain函数
             dir_path = os.path.dirname(test_file_path)
@@ -612,4 +632,4 @@ class TestTemplateGenerator:
         :return: TestMain函数代码
         """
         package_line = f"package {package_name}\n\n" if package_name else ""
-        return constants.TEST_MAIN_TEMPLATE.format(package_line=package_line)
+        return core.constants.TEST_MAIN_TEMPLATE.format(package_line=package_line)
